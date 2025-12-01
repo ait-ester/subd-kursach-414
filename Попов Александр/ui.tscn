@@ -1,0 +1,53 @@
+[gd_scene load_steps=2 format=3 uid="uid://c4oq33yl6ks1v"]
+
+[ext_resource type="Script" uid="uid://bl868vhcnmbcu" path="res://ui.gd" id="1_fyqef"]
+
+[node name="Control" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_fyqef")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="ColorRect" type="ColorRect" parent="CanvasLayer"]
+offset_right = 1152.0
+offset_bottom = 648.0
+color = Color(0, 0, 0, 1)
+
+[node name="easy" type="Button" parent="CanvasLayer"]
+offset_left = 154.0
+offset_top = 349.0
+offset_right = 409.0
+offset_bottom = 417.0
+text = "легко"
+
+[node name="normal" type="Button" parent="CanvasLayer"]
+offset_left = 454.0
+offset_top = 349.0
+offset_right = 707.0
+offset_bottom = 417.0
+text = "нормально"
+
+[node name="brutal" type="Button" parent="CanvasLayer"]
+offset_left = 754.0
+offset_top = 349.0
+offset_right = 1007.0
+offset_bottom = 417.0
+text = "брутал"
+
+[node name="Label" type="Label" parent="CanvasLayer"]
+offset_left = 476.0
+offset_top = 131.0
+offset_right = 674.0
+offset_bottom = 154.0
+scale = Vector2(2.24, 2.24)
+pivot_offset = Vector2(99, 0)
+text = " какая сложность будет?"
+
+[connection signal="pressed" from="CanvasLayer/easy" to="." method="_on_easy_pressed"]
+[connection signal="pressed" from="CanvasLayer/normal" to="." method="_on_normal_pressed"]
+[connection signal="pressed" from="CanvasLayer/brutal" to="." method="_on_brutal_pressed"]

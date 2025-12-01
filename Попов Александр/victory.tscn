@@ -1,0 +1,17 @@
+[gd_scene load_steps=3 format=3 uid="uid://byhjshv3oado7"]
+
+[ext_resource type="Texture2D" uid="uid://bgjssywmjwt0e" path="res://images/6am.jpeg" id="1_7bnjr"]
+[ext_resource type="Script" uid="uid://dmg4565440mat" path="res://victory.gd" id="1_v31sk"]
+
+[node name="victory" type="Node2D"]
+script = ExtResource("1_v31sk")
+
+[node name="6Am" type="Sprite2D" parent="."]
+position = Vector2(576, 324.5)
+scale = Vector2(5.1200004, 2.8755553)
+texture = ExtResource("1_7bnjr")
+
+[node name="Timer" type="Timer" parent="."]
+wait_time = 12.0
+
+[connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]
