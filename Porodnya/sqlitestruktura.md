@@ -1,5 +1,5 @@
--- Таблица пользователей
-CREATE TABLE user (
+    -- Таблица пользователей
+    CREATE TABLE user (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username VARCHAR(80) UNIQUE NOT NULL,
     email VARCHAR(120) UNIQUE NOT NULL,
@@ -8,18 +8,18 @@ CREATE TABLE user (
     is_active BOOLEAN DEFAULT TRUE,
     is_login_allowed BOOLEAN DEFAULT FALSE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+    );
 
--- Таблица ячеек склада
-CREATE TABLE cell (
+    -- Таблица ячеек склада
+    CREATE TABLE cell (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name VARCHAR(100) NOT NULL,
     description TEXT,
     capacity INTEGER
-);
+    );
 
--- Таблица товаров
-CREATE TABLE product (
+    -- Таблица товаров
+    CREATE TABLE product (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name VARCHAR(100) NOT NULL,
     description TEXT,
@@ -33,10 +33,10 @@ CREATE TABLE product (
     FOREIGN KEY (cell_id) REFERENCES cell (id),
     FOREIGN KEY (searcher_id) REFERENCES user (id),
     FOREIGN KEY (buyer_id) REFERENCES user (id)
-);
+    );
 
--- Таблица продаж
-CREATE TABLE sale (
+    -- Таблица продаж
+    CREATE TABLE sale (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     sale_date DATETIME DEFAULT CURRENT_TIMESTAMP,
     product_name VARCHAR(200),
@@ -50,10 +50,10 @@ CREATE TABLE sale (
     return_date DATETIME,
     FOREIGN KEY (product_id) REFERENCES product (id),
     FOREIGN KEY (seller_id) REFERENCES user (id)
-);
+    );
 
--- Таблица закупок
-CREATE TABLE purchase (
+    -- Таблица закупок
+    CREATE TABLE purchase (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     purchase_date DATE DEFAULT CURRENT_DATE,
     product_name VARCHAR(200) NOT NULL,
@@ -65,10 +65,10 @@ CREATE TABLE purchase (
     buyer_id INTEGER,
     FOREIGN KEY (searcher_id) REFERENCES user (id),
     FOREIGN KEY (buyer_id) REFERENCES user (id)
-);
+    );
 
--- Таблица списаний
-CREATE TABLE writeoff (
+    -- Таблица списаний
+    CREATE TABLE writeoff (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     product_id INTEGER NOT NULL,
     quantity INTEGER NOT NULL,
@@ -76,10 +76,10 @@ CREATE TABLE writeoff (
     writeoff_date DATETIME DEFAULT CURRENT_TIMESTAMP,
     notes TEXT,
     FOREIGN KEY (product_id) REFERENCES product (id)
-);
+    );
 
--- Таблица заявок на ремонт
-CREATE TABLE repair_request (
+    -- Таблица заявок на ремонт
+    CREATE TABLE repair_request (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     request_number VARCHAR(20) UNIQUE NOT NULL,
     created_date DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -101,4 +101,4 @@ CREATE TABLE repair_request (
     is_archived BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (receiver_id) REFERENCES user (id),
     FOREIGN KEY (performer_id) REFERENCES user (id)
-);
+    );
