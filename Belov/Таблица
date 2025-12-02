@@ -1,0 +1,22 @@
+Create table material
+(id_mat serial4 primary key,
+material varcahr);
+
+Create table country
+(id_coun serial4 primary key,
+country_name varchar);
+
+
+Create table product
+(id_p serial4 primary key,
+product_name varchar,
+id_mat int4,
+price int4,
+id_coun int4,
+description varchar,
+foreign key (id_coun) refernces country (id_coun),
+foreign key (id_mat) refernces material (id_mat));
+
+Create table 
+
+
