@@ -1,4 +1,4 @@
-service_center/
+'service_center/
 │
 ├── service_center.db          # Файл базы данных SQLite
 ├── requirements.txt           # Зависимости Python
@@ -50,4 +50,4 @@ service_center/
 │
 └── static/                    # Статические файлы (CSS, JS, изображения)
     └── css/
-        └── styles.css
+        └── styles.css'
