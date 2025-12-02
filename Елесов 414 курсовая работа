@@ -2,3 +2,49 @@
 2. создание самой БД на основе структуры
 3. Создание и проектирование структуры приложения с gui-интерфейсом (python, pycharm)
 4. реализация самого приложения
+
+
+создание базы данных
+
+create table roles (id integer primary key, name varchar(20) not null); -- таблица с должностями
+insert into roles values(1, 'администратор'), (2, 'горничная');
+
+create table workers(id integer primary key, name varchar not null, role integer, foreign key (role) references roles(id)); -- таблица с работниками
+insert into workers values(1, 'Надежда Ивановна Дурова', 1), (2, 'Татьяна Ивановна Ларина', 2);
+
+create table rooms(number varchar(3) primary key, floor integer, number_of_places integer, is_active boolean); -- таблица с номерами
+insert into rooms values('111', 1, 1, true), ('112', 1, 1, true), ('113', 1, 1, true), ('114', 1, 1, true), ('115', 1, 1, true), ('116', 1, 1, true);
+insert into rooms values('211', 2, 2, true), ('212', 2, 2, true), ('213', 2, 2, true), ('214', 2, 2, true), ('215', 2, 2, true), ('216', 2, 2, true);
+insert into rooms values('311', 3, 3, true), ('312', 3, 3, true), ('313', 3, 3, true), ('314', 3, 3, true), ('315', 3, 3, true), ('316', 3, 3, true);
+insert into rooms values('411', 4, 4, true), ('412', 4, 4, true), ('413', 4, 4, true), ('414', 4, 4, true), ('415', 4, 4, true), ('416', 4, 4, true);
+
+create table beds(id integer primary key, room_number varchar(3) not null, is_occupied boolean, price_per_night real, foreign key (room_number) references rooms(number)); -- таблица с койками
+insert into beds values(1, '111', true, 100), (2, '112', true, 100), (3, '113', true, 100), (4, '114', true, 100), (5, '115', true, 100), (6, '116', true, 100);
+
+insert into beds values(7, '211', true, 200), (8, '211', true, 200), (9, '212', true, 200), (10, '212', true, 200), (11, '213', true, 200), (12, '213', true, 200);
+insert into beds values(13, '214', true, 200), (14, '214', true, 200), (15, '215', true, 200), (16, '215', true, 200), (17, '216', true, 200), (18, '216', true, 200);
+
+insert into beds values(19, '311', true, 300), (20, '311', true, 300), (21, '311', true, 300);
+insert into beds values(22, '312', true, 300), (23, '312', true, 300), (24, '312', true, 300);
+insert into beds values(25, '313', true, 300), (26, '313', true, 300), (27, '313', true, 300);
+insert into beds values(28, '314', true, 300), (29, '314', true, 300), (30, '314', true, 300);
+insert into beds values(31, '315', true, 300), (32, '315', true, 300), (33, '315', true, 300);
+insert into beds values(34, '316', true, 300), (35, '316', true, 300), (36, '316', true, 300);
+
+insert into beds values(37, '411', true, 400), (38, '411', true, 400), (39, '411', true, 400), (40, '411', true, 400);
+insert into beds values(41, '412', true, 400), (42, '412', true, 400), (43, '412', true, 400), (44, '412', true, 400);
+insert into beds values(45, '413', true, 400), (46, '413', true, 400), (47, '413', true, 400), (48, '413', true, 400);
+insert into beds values(49, '414', true, 400), (50, '414', true, 400), (51, '414', true, 400), (52, '414', true, 400);
+insert into beds values(53, '415', true, 400), (54, '415', true, 400), (55, '415', true, 400), (56, '415', true, 400);
+insert into beds values(57, '416', true, 400), (58, '416', true, 400), (59, '416', true, 400), (60, '416', true, 400);
+
+create table clients(id integer primary key, name varchar not null, surname varchar not null, surname1 varchar, phone_number varchar(11) not null, email varchar, passport_series varchar(4) not null, passport_number varchar(6) not null); -- таблица клиентов (будет заполняться в приложении)
+
+create table reservation(date_of_checkin date, date_of_checkout date, client integer, administrator integer, bed integer, number_of_nights integer, total_price real, foreign key (client) references clients(id), foreign key (administrator) references workers(id), foreign key (bed) references beds(id)); -- история брони (будет заполняться в приложении)
+
+-- процедура, обновляющая дату выселения
+create or replace procedure extension(client_id integer, new_date date) as $$
+begin
+update reservation set date_of_checkout=new_date where client=client_id;
+end;
+$$ language plpgsql;
