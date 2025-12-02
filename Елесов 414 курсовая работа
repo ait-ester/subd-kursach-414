@@ -48,3 +48,7 @@ begin
 update reservation set date_of_checkout=new_date where client=client_id;
 end;
 $$ language plpgsql;
+
+
+-- доп. функционал
+create table schedule_of_cleaning_rooms (date_of_cleaning date not null, room_number varchar(3) not null, housemaid integer not null, foreign key (room_number) references rooms(number), foreign key (housemaid) references workers(id)); -- таблица для расписания уборок номеров (будет заполняться в приложении)
