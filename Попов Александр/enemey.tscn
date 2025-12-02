@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3 uid="uid://dw67xs0vrts7r"]
+[gd_scene load_steps=15 format=3 uid="uid://dw67xs0vrts7r"]
 
 [ext_resource type="Texture2D" uid="uid://c7xggfkl8ke57" path="res://icon.svg" id="1_87l3t"]
 [ext_resource type="Script" uid="uid://87j6y71fi8jl" path="res://enemey.gd" id="1_xj8i8"]
@@ -10,25 +10,31 @@
 [ext_resource type="AudioStream" uid="uid://ch3rie0rpp7ue" path="res://sounds/EXE_roar_long_5.mp3" id="8_g3p37"]
 [ext_resource type="AudioStream" uid="uid://bvic127tfupb0" path="res://sounds/EXE_roar_long_6.mp3" id="9_ogqmp"]
 [ext_resource type="AudioStream" uid="uid://b4lalgtscct7o" path="res://sounds/EXE_roar_long_7.mp3" id="10_5frm2"]
+[ext_resource type="Texture2D" uid="uid://qm3d1c8xp3ee" path="res://images/exe1.png" id="11_snnui"]
+[ext_resource type="Texture2D" uid="uid://dkn2r6dwwoci2" path="res://images/exe4.jpg" id="12_g3p37"]
+[ext_resource type="Texture2D" uid="uid://bb56xm6wfv0l1" path="res://images/exe3.png" id="13_ogqmp"]
+[ext_resource type="Texture2D" uid="uid://cgpm1uyd5nvh4" path="res://images/exe2.png" id="14_5frm2"]
 
 [node name="enemey" type="Node2D"]
 script = ExtResource("1_xj8i8")
 
 [node name="Icon" type="Sprite2D" parent="."]
+visible = false
 modulate = Color(1, 0, 0, 1)
 self_modulate = Color(1.4683453, 0, 0, 1)
 texture = ExtResource("1_87l3t")
 
 [node name="Timer_easy" type="Timer" parent="."]
-wait_time = 10.0
+wait_time = 8.0
 
 [node name="Timer_normal" type="Timer" parent="."]
-wait_time = 5.0
+wait_time = 4.0
 
 [node name="Timer_hard" type="Timer" parent="."]
 wait_time = 2.0
 
 [node name="Timer" type="Timer" parent="."]
+wait_time = 3.0
 
 [node name="Gameover" type="Sprite2D" parent="."]
 visible = false
@@ -55,3 +61,21 @@ stream = ExtResource("9_ogqmp")
 
 [node name="roar7" type="AudioStreamPlayer2D" parent="."]
 stream = ExtResource("10_5frm2")
+
+[node name="Exe1" type="Sprite2D" parent="."]
+scale = Vector2(0.6, 0.6)
+texture = ExtResource("11_snnui")
+
+[node name="Exe4" type="Sprite2D" parent="."]
+position = Vector2(36, 1909)
+texture = ExtResource("12_g3p37")
+
+[node name="Exe3" type="Sprite2D" parent="."]
+position = Vector2(611.5, 1864)
+texture = ExtResource("13_ogqmp")
+
+[node name="Exe2" type="Sprite2D" parent="."]
+position = Vector2(1467, 1926.5)
+texture = ExtResource("14_5frm2")
+
+[connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]

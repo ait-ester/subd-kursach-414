@@ -1,0 +1,17 @@
+[gd_scene load_steps=3 format=3 uid="uid://fkqr6t2pxqke"]
+
+[ext_resource type="Script" uid="uid://gknk83d0oejs" path="res://gg.gd" id="1_kv4wm"]
+[ext_resource type="Texture2D" uid="uid://b4clwjvi7ihm0" path="res://images/gameover.jpeg" id="2_oa3hd"]
+
+[node name="gg" type="Node2D"]
+script = ExtResource("1_kv4wm")
+
+[node name="Gameover" type="Sprite2D" parent="."]
+position = Vector2(587, 349)
+scale = Vector2(0.53, 0.53)
+texture = ExtResource("2_oa3hd")
+
+[node name="Timer" type="Timer" parent="."]
+wait_time = 4.0
+
+[connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]

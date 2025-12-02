@@ -9,13 +9,16 @@ extends CanvasLayer
 @onready var camera5 = get_parent().get_node("camera_system/Camera5")
 @onready var camera6 = get_parent().get_node("camera_system/Camera6")
 @onready var camera7 = get_parent().get_node("camera_system/Camera7")
+@onready var camera8 = get_parent().get_node("camera_system/Camera8")
+@onready var camera9 = get_parent().get_node("camera_system/Camera9")
+@onready var camera10 = get_parent().get_node("camera_system/Camera10")
 @onready var world = get_parent().get_node("camera_system/world")
 
 @onready var animatronic = get_parent().get_node("enemey")  # Путь к аниматронику
 @onready var battery_label = $charge 
 var flashlight_battery = 100.0  # Заряд батареи (0-100)
 var flashlight_drain = 100.0     # Сколько тратится за использование
-var flashlight_recharge = 10   # Восстановление за секунду
+var flashlight_recharge = 5   # Восстановление за секунду
 var flashlight_cooldown = 0   # Время до следующего использования
 var max_cooldown = 10          # Максимальный cooldown в секундах
 
@@ -87,6 +90,21 @@ func _on_button_city_7_pressed() -> void:
 	camera7.make_current()
 	animatronic.update_camera("camera7")
 	#print("camera7")
+	
+func _on_button_city_8_pressed() -> void:
+	camera8.make_current()
+	animatronic.update_camera("camera8")
+	#print("camera8")
+
+func _on_button_city_9_pressed() -> void:
+	camera9.make_current()
+	animatronic.update_camera("camera9")
+	#print("camera9")
+
+func _on_button_city_10_pressed() -> void:
+	camera10.make_current()
+	animatronic.update_camera("camera10")
+	#print("camera10")
 
 func _on_comp_down_mouse_entered() -> void:
 	camera_office.make_current()

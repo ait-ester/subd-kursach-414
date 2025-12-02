@@ -48,6 +48,15 @@ scale = Vector2(2.24, 2.24)
 pivot_offset = Vector2(99, 0)
 text = " какая сложность будет?"
 
+[node name="Label2" type="Label" parent="CanvasLayer"]
+offset_left = 1146.08
+offset_top = 596.48
+offset_right = 1203.08
+offset_bottom = 619.48
+scale = Vector2(2.24, 2.24)
+pivot_offset = Vector2(99, 0)
+text = "alpha 1"
+
 [connection signal="pressed" from="CanvasLayer/easy" to="." method="_on_easy_pressed"]
 [connection signal="pressed" from="CanvasLayer/normal" to="." method="_on_normal_pressed"]
 [connection signal="pressed" from="CanvasLayer/brutal" to="." method="_on_brutal_pressed"]
