@@ -8,7 +8,7 @@
 <p align="center">Курсовая работа</p>
 
 
-<p align="center">тема: БД "Обмен навыками" </p>
+<p align="center">тема: БД для сервисного центра </p>
 
 
 <p align="right"> выполнил </p>
