@@ -1,0 +1,78 @@
+таблица должностей:
+
+create table posts (post_id serial primary key, name text not null unique);
+
+
+таблица способов связи:
+
+create table comm_methods (comm_method_id serial primary key, name text not null);
+
+
+таблица способов оплаты:
+
+create table payments_methods (payment_method_id serial primary key, name text not null);
+
+
+таблица услуг:
+
+create table service (service_id serial primary key, name text not null unique, description text, price numeric(10,2));
+
+
+таблица сотрудников:
+
+create table employees (employee_id serial primary key, name text not null, post_id int references posts(post_id), phone varchar(255) not null);
+
+
+таблица клиентов:
+
+create table clients (client_id serial primary key, name text not null, phone varchar(255), email text, comm_method_id int references comm_methods(comm_method_id), 
+registered_at timestamp default current_timestamp);
+
+
+таблица заказов:
+
+create table orders (order_id serial primary key, client_id int references clients(client_id), employee_id int references employees(employee_id), order_date timestamp default current_timestamp, order_data json, total_amount numeric(10, 2));
+
+
+таблица хранения фото:
+
+create table results (res_id serial primary key, order_id int references orders(order_id), filename text not null, upload_date timestamp default current_timestamp);
+
+
+—————————
+
+сотрудники:
+Владелец точки
+фотограф
+кассир
+администратор базы данных
+бухгалтер
+ретушер (мастер обработки)
+менеджер
+
+
+—————————
+
+уровни доступа:
+
+Владелец точки - полные права доступа к бд
+
+фотограф -
+   редактирование: таблица с данными фото (таблица photos)
+   просмотр: таблица со способами оплаты, таблица услуг (service), таблица способов связи (comm_methods), таблица заказов (orders)
+
+кассир - 
+   редактирование - таблица заказов (orders)
+   просмотр: таблица способов оплаты (payment_methods), таблица услуг (service), таблица сотрудников (только фотографы (employees)), таблица клиентов (clients)
+
+aдмин Бд - полный доступ к бд
+
+бухгалтер - 
+   редактирование: таблица сотрудников (employees)
+   просмотр: таблица заказов (orders)
+
+ретушер -
+   редактирование: таблица фото (photos)
+   
+менеджер -
+   просмотр: все таблицы кроме фото
