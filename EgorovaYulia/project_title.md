@@ -6,18 +6,18 @@
 
 <p align="center"> тема: База данных для домашней библиотеки </p>
 
-<p align="left"> выполнила
+<p align="right"> выполнила
 
-<p align="left">студентка 4 курса
+<p align="right">студентка 4 курса
 
-<p align="left">414 группы
+<p align="right">414 группы
 
-<p align="left">Егорова Юлия Викторовна
+<p align="right">Егорова Юлия Викторовна
 
-<p align="left">проверил
+<p align="right">проверил
 
-<p align="left">Пунгин И.В.
+<p align="right">Пунгин И.В.
 
-<p align="left">дата проверки:
+<p align="right">дата проверки:
 
-<p align="left">Сыктывкар, 2025
+<p align="right">Сыктывкар, 2025
