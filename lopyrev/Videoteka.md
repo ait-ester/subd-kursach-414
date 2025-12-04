@@ -69,5 +69,44 @@ INSERT INTO movie_actors (movie_id, actor_id) VALUES (1, 1), (1, 2), (1, 3), (2,
 INSERT INTO viewings (movie_id, viewing_date, notes) VALUES (1, '2023-12-09', 'Грустный но интересный фильм'), (1, '2024-12-24', 'Рождественский просмотр'), 
 (2, '2024-04-12', 'Пятничный просмотр после работы'), (3, '2024-09-09', 'Обычный просмотр классики'), (3, '2024-10-12', 'Смотрел с друзьями'), 
 (4, '2024-10-20', 'Интересный фильм'), (5, '2025-01-10', 'Эмоциональное кино'), (6, '2025-02-11', 'Лучший фильм'), (7, '2025-02-20', '-'), 
-(8, '2025-03-04', 'Вечерний просмотр кино'), (9, '2025-03-19', 'Пересмотр в отпуске'), (10, '2025-06-11', 'Вспомнил классику');           
+(8, '2025-03-04', 'Вечерний просмотр кино'), (9, '2025-03-19', 'Пересмотр в отпуске'), (10, '2025-06-11', 'Вспомнил классику');
+
+Запросы к базе данных:
+Вывод всех фильмов с жанрами и актерами
+SELECT 
+    m.name as "Фильм",
+    m.release_year as "Год",
+    m.my_rating as "Рейтинг",
+    STRING_AGG(DISTINCT g.genre_name, ', ') as "Жанры",
+    STRING_AGG(DISTINCT a.actor_name, ', ') as "Актеры",
+    COUNT(DISTINCT v.id) as "Просмотров"
+FROM movies m
+LEFT JOIN movie_genres mg ON m.id = mg.movie_id
+LEFT JOIN genres g ON mg.genre_id = g.id
+LEFT JOIN movie_actors ma ON m.id = ma.movie_id
+LEFT JOIN actors a ON ma.actor_id = a.id
+LEFT JOIN viewings v ON m.id = v.movie_id
+GROUP BY m.id
+ORDER BY m.my_rating DESC;
+
+Статистика фильмо по жанрам
+SELECT 
+    g.genre_name as "Жанр",
+    COUNT(DISTINCT mg.movie_id) as "Фильмов",
+    ROUND(AVG(m.my_rating), 1) as "Средний рейтинг"
+FROM genres g
+LEFT JOIN movie_genres mg ON g.id = mg.genre_id
+LEFT JOIN movies m ON mg.movie_id = m.id
+GROUP BY g.id
+HAVING COUNT(DISTINCT mg.movie_id) > 0
+ORDER BY COUNT(DISTINCT mg.movie_id) DESC;
+
+История просмотров
+SELECT 
+    m.name as "Фильм",
+    v.viewing_date as "Дата просмотра",
+    v.notes as "Заметки"
+FROM viewings v
+JOIN movies m ON v.movie_id = m.id
+ORDER BY v.viewing_date DESC;
 
