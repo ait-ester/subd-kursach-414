@@ -1,0 +1,331 @@
+Подробное описание таблиц
+
+1. users 
+ Назначение - хранение учетных записей пользователей (администратор, рабочие и т.п.)
+  Поля:
+	id SERIAL PRIMARY KEY - уникальный идентификатор.
+   	username VARCHAR(100) UNIQUE NOT NULL - логин.
+   	password_hash TEXT NOT NULL - хеш пароля.
+   	fullname VARCHAR(200) - полное имя. 
+   	role VARCHAR(50) - роль (user, admin и т.п.)
+   	created_at TIMESTAMP DEFAULT NOW() - дата создания.
+
+
+
+
+2. logs
+ Назначение: каталог брёвен (сырой круглый лес) с параметрами.
+  Поля:
+	id SERIAL PRIMARY KEY
+	species_name VARCHAR(100) — порода.
+	diameter_cm NUMERIC(10,3) — диаметр в сантиметрах.
+	length_m NUMERIC(10,3) — длина в метрах.
+	quality_grade VARCHAR(50) — сорт или класс.
+	description TEXT
+	created_by INT REFERENCES users(id) — кто добавил.
+	created_at TIMESTAMP DEFAULT NOW()   
+ 
+ 
+ 
+ 
+3. lumber
+ Назначение: каталог распиленных материалов (доски, брус и т.д.).
+  Поля:
+	id SERIAL PRIMARY KEY
+	material_type VARCHAR(50) — тип: board, beam и т.д. (читаемое имя: «Доска», «Брус»).
+	species_name VARCHAR(100)
+	thickness_mm NUMERIC(10,3) — толщина в мм.
+	width_mm NUMERIC(10,3) — ширина в мм.
+	length_m NUMERIC(10,3) — длина в м.
+	quantity INT DEFAULT 1 — количество штук.
+	description TEXT
+	created_by INT REFERENCES users(id)
+	created_at TIMESTAMP DEFAULT NOW()
+
+
+
+
+4. volume_calculations
+ Назначение: запись одного расчёта (партии).
+  Поля:
+	id SERIAL PRIMARY KEY
+	user_id INT REFERENCES users(id) — кто создал расчёт.
+	calculation_name VARCHAR(200)
+	total_volume NUMERIC(20,3) DEFAULT 0 — итоговый объём (м³), поддерживается триггерами.
+	created_at TIMESTAMP DEFAULT NOW()
+
+
+
+
+5. calculation_logs
+ Назначение: связь расчёта с брёвнами; хранит рассчитанный объём конкретного бревна.
+  Поля:
+	id SERIAL PRIMARY KEY
+	calculation_id INT REFERENCES volume_calculations(id) ON DELETE CASCADE
+	log_id INT REFERENCES logs(id) ON DELETE CASCADE
+	volume_m3 NUMERIC(20,3) — рассчитанный объём (м³)
+
+
+
+
+6. calculation_lumber
+ Назначение: связь расчёта с пиломатериалами; хранит рассчитанный объём конкретного материала.
+  Поля:
+	id SERIAL PRIMARY KEY
+	calculation_id INT REFERENCES volume_calculations(id) ON DELETE CASCADE
+	lumber_id INT REFERENCES lumber(id) ON DELETE CASCADE
+	volume_m3 NUMERIC(20,3)
+
+
+
+
+7. saved_reports
+ Назначение: ссылки/пути к сгенерированным файлам отчётов (PDF, XLSX).
+  Поля:
+	id SERIAL PRIMARY KEY
+	calculation_id INT REFERENCES volume_calculations(id)
+	file_path TEXT NOT NULL
+	created_at TIMESTAMP DEFAULT NOW()
+
+
+
+Обоснование связей (почему так спроектировано)
+
+Разделение (logs) и (lumber) 
+— логически разные сущности: бревно (круглый лес) и распиленный материал; имеют разные параметры (диаметр vs толщина/ширина). Объединять их в одну таблицу можно, но тогда пришлось бы много nullable полей и усложнение валидации. Отдельные таблицы дают более семантичную модель и упрощают триггеры/расчёты.
+
+Введение (volume_calculations) как контейнера расчёта
+— каждый расчёт (партия, заявка, смена) собирает набор объектов (брёвен/пиломатериалов). Это позволяет хранить историю, давать имена расчётам, связывать отчёты.
+
+Связующие таблицы (calculation_logs) и (calculation_lumber)
+— реализуют связь «многие-к-одному» (много брёвен в одном расчёте). Хранение рассчитанного volume_m3 в связующей таблице позволяет фиксировать объём на момент добавления (историчность) и ускоряет выборки (нет необходимости каждый раз пересчитывать).
+
+FK на (users)
+— сохраняем информацию о том, кто добавил запись/сделал расчёт — важно для логирования и прав доступа.
+
+ON DELETE CASCADE в связующих таблицах
+— логично: при удалении расчёта удаляются все связанные строки; при удалении конкретного бревна/материала удаляются ссылки в расчётах.
+
+
+			CREATE 
+
+	1. Таблица пользователей (users)
+    CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    fullname VARCHAR(100),
+    role VARCHAR(20) DEFAULT 'user',
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+	2. Таблица бревен (logs)
+diameter — сантиметры
+length — метры
+
+    CREATE TABLE logs (
+    id SERIAL PRIMARY KEY,
+    species_name VARCHAR(50) NOT NULL,
+    diameter NUMERIC(10,3) NOT NULL,
+    length NUMERIC(10,3) NOT NULL,
+    quality_grade VARCHAR(5),
+    description TEXT,
+    created_by INT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+	3. Таблица пиломатериалов (lumber)
+thickness — мм
+width — мм
+length — м
+
+    CREATE TABLE lumber (
+    id SERIAL PRIMARY KEY,
+    material_type VARCHAR(50) NOT NULL,
+    species_name VARCHAR(50) NOT NULL,
+    thickness NUMERIC(10,3) NOT NULL,
+    width NUMERIC(10,3) NOT NULL,
+    length NUMERIC(10,3) NOT NULL,
+    quantity INT NOT NULL,
+    created_by INT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+	4. Таблица расчетов (volume_calculations)
+	
+    CREATE TABLE volume_calculations (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    calculation_name VARCHAR(100) NOT NULL,
+    total_volume NUMERIC(12,3) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+			СВЯЗИ 
+
+	1. Связь: расчёт бревна
+	
+    CREATE TABLE calculation_logs (
+    id SERIAL PRIMARY KEY,
+    calculation_id INT REFERENCES volume_calculations(id) ON DELETE CASCADE,
+    log_id INT REFERENCES logs(id) ON DELETE CASCADE,
+    volume NUMERIC(12,3)
+);
+	2. Связь: расчёт пиломатериалы
+	
+    CREATE TABLE calculation_lumber (
+    id SERIAL PRIMARY KEY,
+    calculation_id INT REFERENCES volume_calculations(id) ON DELETE CASCADE,
+    lumber_id INT REFERENCES lumber(id) ON DELETE CASCADE,
+    volume NUMERIC(12,3)
+);
+
+			ФУНКЦИИ
+	1. Функция нормализации размеров
+
+	(если пользователь ввёл 0.050 вместо 50 мм)
+
+    CREATE OR REPLACE FUNCTION normalize_value(v NUMERIC)
+    RETURNS NUMERIC AS $$
+    BEGIN
+    IF v < 1 THEN
+        RETURN v * 1000;  
+    END IF;
+    RETURN v;
+    END;
+    $$ LANGUAGE plpgsql;
+
+	2. Функция расчёта объёма бревна
+	V = π * (d/2)² * L / 10000
+
+    CREATE OR REPLACE FUNCTION calc_log_volume(d NUMERIC, l NUMERIC)
+    RETURNS NUMERIC AS $$
+    BEGIN
+    RETURN ROUND(3.14159 * (d/2)*(d/2) * l / 10000, 3);
+    END;
+    $$ LANGUAGE plpgsql;
+
+	3. Функция расчёта объёма пиломатериала
+	V = (thickness * width * length * quantity) / 1 000 000
+
+    CREATE OR REPLACE FUNCTION calc_lumber_volume(t NUMERIC, w NUMERIC, l NUMERIC, qty INT)
+    RETURNS NUMERIC AS $$
+    BEGIN
+    RETURN ROUND((t * w * l * qty) / 1000000, 3);
+    END;
+    $$ LANGUAGE plpgsql;
+
+	4. Функция пересчёта total_volume
+    CREATE OR REPLACE FUNCTION update_total_volume(cid INT)
+    RETURNS VOID AS $$
+    DECLARE
+    v1 NUMERIC;
+    v2 NUMERIC;
+    BEGIN
+    
+    SELECT COALESCE(SUM(volume), 0) INTO v1
+    FROM calculation_logs WHERE calculation_id = cid;
+
+    SELECT COALESCE(SUM(volume), 0) INTO v2
+    FROM calculation_lumber WHERE calculation_id = cid;
+
+    UPDATE volume_calculations
+    SET total_volume = ROUND(v1 + v2, 3)
+    WHERE id = cid;
+    END;
+    $$ LANGUAGE plpgsql;
+    
+			ТРИГГЕРЫ
+	1. Триггер на INSERT/UPDATE в calculation_logs
+	
+    CREATE OR REPLACE FUNCTION trg_log_volume()
+    RETURNS TRIGGER AS $$
+    DECLARE d NUMERIC; L NUMERIC;
+    BEGIN
+    
+    SELECT diameter, length INTO d, L FROM logs WHERE id = NEW.log_id;
+
+    NEW.volume := calc_log_volume(d, L);
+
+    PERFORM update_total_volume(NEW.calculation_id);
+
+    RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+
+    CREATE TRIGGER trg_calc_logs
+    BEFORE INSERT OR UPDATE ON calculation_logs
+    FOR EACH ROW EXECUTE FUNCTION trg_log_volume();
+
+	2. Триггер на INSERT/UPDATE в calculation_lumber
+	
+    CREATE OR REPLACE FUNCTION trg_lumber_volume()
+    RETURNS TRIGGER AS $$
+    DECLARE t NUMERIC; w NUMERIC; L NUMERIC; q INT;
+    BEGIN
+    
+    SELECT thickness, width, length, quantity
+    INTO t, w, L, q
+    FROM lumber WHERE id = NEW.lumber_id;
+
+    NEW.volume := calc_lumber_volume(t, w, L, q);
+
+    PERFORM update_total_volume(NEW.calculation_id);
+
+    RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+
+    CREATE TRIGGER trg_calc_lumber
+    BEFORE INSERT OR UPDATE ON calculation_lumber
+    FOR EACH ROW EXECUTE FUNCTION trg_lumber_volume();
+
+	3. Триггер AFTER DELETE для пересчёта total_volume
+	
+    CREATE OR REPLACE FUNCTION trg_recalc_after_delete()
+    RETURNS TRIGGER AS $$
+    BEGIN
+    
+    PERFORM update_total_volume(OLD.calculation_id);
+    RETURN NULL;
+    END;
+    $$ LANGUAGE plpgsql;
+
+    CREATE TRIGGER trg_delete_logs
+    AFTER DELETE ON calculation_logs
+    FOR EACH ROW EXECUTE FUNCTION trg_recalc_after_delete();
+
+    CREATE TRIGGER trg_delete_lumber
+    AFTER DELETE ON calculation_lumber
+    FOR EACH ROW EXECUTE FUNCTION trg_recalc_after_delete();
+    
+			SELECT ЗАПРОСЫ
+	1. Получить все расчёты пользователя
+
+    SELECT id, calculation_name, total_volume, created_at
+    FROM volume_calculations
+    WHERE user_id = 1
+    ORDER BY created_at DESC;
+    
+	2. Просмотреть бревна в расчёте
+    SELECT cl.id, l.species_name, l.diameter, l.length, cl.volume
+    FROM calculation_logs cl
+    JOIN logs l ON cl.log_id = l.id
+    WHERE cl.calculation_id = 1;
+    
+	3. Просмотреть пиломатериалы в расчёте
+    SELECT cl.id, lb.material_type, lb.species_name, lb.thickness, lb.width, lb.length, cl.volume
+    FROM calculation_lumber cl
+    JOIN lumber lb ON cl.lumber_id = lb.id
+    WHERE cl.calculation_id = 1;
+
+	4. Общий список всех бревен
+    SELECT * FROM logs ORDER BY id;
+
+	5. Общий список пиломатериалов 
+    SELECT * FROM lumber ORDER BY id;
+
+
+
+	
+
