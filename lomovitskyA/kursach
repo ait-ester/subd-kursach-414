@@ -1,1 +1,144 @@
 БД для учета автотоваров в магазине этих самых автотоваров, структура еще в разработке как и все остальное, продакшн пока не начат
+
+
+# Пояснительная записка к проекту базы данных «Автомагазин»
+
+### 1. Введение и выбор инструментов
+Для реализации системы хранения данных я выбрал СУБД **PostgreSQL**. Мой выбор обусловлен тем, что это мощная объектно-реляционная система, поддерживающая стандарты SQL, строгую типизацию данных и обеспечивающая высокую надежность (ACID). В будущем, при написании backend-части на Python, PostgreSQL отлично интегрируется через библиотеки `psycopg2` или `SQLAlchemy`.
+
+### 2. Проектирование схемы данных (Логика)
+Перед написанием кода я проанализировал предметную область. Хранить всё в одной таблице (Excel-стиль) неправильно, так как это приведет к дублированию данных и аномалиям при обновлении.
+
+Я спроектировал базу данных, приведенную к **3-й нормальной форме (3NF)**.
+Мной были выделены следующие сущности:
+1.  **Категории (`categories`)**: Чтобы не писать «Ходовая» каждый раз вручную.
+2.  **Производители (`manufacturers`)**: Бренд для запчасти критически важен.
+3.  **Товары (`products`)**: Основная таблица с ценами и остатками.
+4.  **Клиенты (`customers`)**: Кто покупает.
+5.  **Заказы (`orders`)**: «Шапка» чека (дата, кто купил, статус).
+6.  **Позиции заказа (`order_items`)**: Что именно лежит в чеке (связь многие-ко-многим между заказом и товаром).
+
+### 3. Реализация (SQL код)
+
+Ниже представлен SQL-скрипт, который я разработал для инициализации базы данных.
+
+```sql
+-- 1. Таблица категорий (например: Двигатель, Подвеска, Масла)
+CREATE TABLE categories (
+    category_id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT
+);
+
+-- 2. Таблица производителей (например: Bosch, Denso, Toyota)
+CREATE TABLE manufacturers (
+    manufacturer_id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    country VARCHAR(50)
+);
+
+-- 3. Таблица клиентов
+CREATE TABLE customers (
+    customer_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    phone VARCHAR(20) UNIQUE NOT NULL,
+    email VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 4. Таблица товаров (Основная)
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,            -- Название (напр. "Фильтр масляный")
+    part_number VARCHAR(50) NOT NULL,      -- Артикул (уникальный код запчасти)
+    price NUMERIC(10, 2) NOT NULL CHECK (price >= 0), -- Цена (используем NUMERIC для денег!)
+    stock_quantity INTEGER NOT NULL DEFAULT 0 CHECK (stock_quantity >= 0), -- Остаток на складе
+    category_id INTEGER REFERENCES categories(category_id) ON DELETE SET NULL,
+    manufacturer_id INTEGER REFERENCES manufacturers(manufacturer_id) ON DELETE SET NULL,
+    description TEXT
+);
+
+-- 5. Таблица заказов (Шапка заказа)
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INTEGER REFERENCES customers(customer_id) ON DELETE CASCADE,
+    order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(20) DEFAULT 'new' CHECK (status IN ('new', 'paid', 'shipped', 'cancelled'))
+);
+
+-- 6. Таблица позиций заказа (Детализация: что конкретно купили)
+CREATE TABLE order_items (
+    item_id SERIAL PRIMARY KEY,
+    order_id INTEGER REFERENCES orders(order_id) ON DELETE CASCADE,
+    product_id INTEGER REFERENCES products(product_id) ON DELETE RESTRICT,
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    price_per_unit NUMERIC(10, 2) NOT NULL -- Цена на момент покупки!
+);
+```
+
+---
+
+### 4. Подробное описание структуры (Что я сделал и почему)
+
+В ходе разработки структуры я принял несколько важных архитектурных решений, которые опишу ниже:
+
+#### А. Работа с деньгами (`NUMERIC` vs `FLOAT`)
+В таблице `products` для поля `price` я использовал тип данных `NUMERIC(10, 2)`. Я изучил, что использование `FLOAT` или `REAL` для хранения денег является грубой ошибкой из-за проблем с точностью плавающей запятой. `NUMERIC` гарантирует точное хранение копеек.
+
+#### Б. Ссылочная целостность (Foreign Keys)
+Я связал таблицы между собой с помощью внешних ключей (`REFERENCES`).
+*   **Что это дает:** Нельзя добавить товар, привязав его к несуществующей категории.
+*   **Каскадное удаление:** В таблице `orders` я использовал `ON DELETE CASCADE`. Это значит, если мы удалим клиента из базы, все его заказы удалятся автоматически, чтобы не оставлять «мусор». А вот в `products` я использовал `SET NULL`, чтобы при удалении категории товар остался, но без категории.
+
+#### В. Разделение Заказа и Позиций (`orders` и `order_items`)
+Это классический паттерн проектирования E-commerce систем, который я применил.
+*   Таблица `orders` хранит общую информацию: *«Иван Иванов сделал заказ №5 вчера»*.
+*   Таблица `order_items` хранит суть: *«В заказе №5 лежит 2 свечи зажигания и 1 канистра масла»*.
+Если бы я попытался запихнуть всё в одну таблицу, я бы не смог оформить заказ на несколько разных товаров сразу.
+
+#### Г. Фиксация исторической цены
+В таблице `order_items` есть поле `price_per_unit`.
+**Зачем оно нужно, если цена есть в `products`?**
+Это критически важный момент. Цены в магазине меняются. Если сегодня масло стоит 1000р, а завтра 1200р, то в старых заказах цена должна остаться 1000р (той, по которой клиент купил). Поэтому при создании заказа я копирую текущую цену из `products` в `order_items`.
+
+#### Д. Валидация данных (`CHECK`)
+Я добавил ограничения на уровне базы данных:
+*   `CHECK (price >= 0)`: Цена не может быть отрицательной.
+*   `CHECK (stock_quantity >= 0)`: Нельзя продать товара больше, чем есть на складе (уйти в минус).
+*   `status IN (...)`: Статус заказа может быть только из заранее определенного списка, чтобы исключить опечатки.
+
+### 5. Планы по интеграции с Python
+Данная структура полностью готова к написанию софта.
+1.  **ORM:** Можно описать эти таблицы как классы (модели) в Python.
+2.  **Логика:** При оформлении покупки скрипт на Python будет делать транзакцию:
+    *   Создавать запись в `orders`.
+    *   Добавлять записи в `order_items`.
+    *   Делать `UPDATE products SET stock_quantity = stock_quantity - N`, уменьшая остаток.
+
+---
+
+### Пример заполнения (для проверки)
+
+Чтобы показать, что база работает, вот пару SQL-запросов для наполнения:
+
+```sql
+-- Добавляем справочники
+INSERT INTO categories (name) VALUES ('Масла'), ('Фильтры');
+INSERT INTO manufacturers (name, country) VALUES ('Shell', 'Нидерланды'), ('Mann', 'Германия');
+
+-- Добавляем товары
+INSERT INTO products (name, part_number, price, stock_quantity, category_id, manufacturer_id) 
+VALUES 
+('Масло Shell Helix 5W-40', '550021', 4500.00, 20, 1, 1),
+('Фильтр масляный', 'W914/2', 800.00, 50, 2, 2);
+
+-- Клиент делает заказ
+INSERT INTO customers (first_name, last_name, phone) VALUES ('Алексей', 'Петров', '+79990000000');
+INSERT INTO orders (customer_id) VALUES (1); -- Создался заказ id=1
+
+-- Добавляем товары в заказ (Купил 1 канистру масла и 2 фильтра)
+INSERT INTO order_items (order_id, product_id, quantity, price_per_unit) VALUES
+(1, 1, 1, 4500.00),
+(1, 2, 2, 800.00);
+```
