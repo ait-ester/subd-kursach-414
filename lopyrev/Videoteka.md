@@ -1,7 +1,7 @@
 Сегодня разработал структуру базы данных и создал таблицы для домашней видеотеки
 
 Таблица с фильмами
-У нас есть название фильма, год релиза, жанр, длительность фильма, описание, свой рейтинг и дата просмотра
+У нас есть название фильма, год релиза, длительность фильма, описание, свой рейтинг
 CREATE TABLE movies (id SERIAL PRIMARY KEY, name VARCHAR(200) NOT NULL, release_year INTEGER, duration INTEGER, description TEXT, my_rating INTEGER CHECK (my_rating >= 1 AND my_rating <= 10));
 
 Таблица с актерами
