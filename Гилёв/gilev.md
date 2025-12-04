@@ -45,11 +45,11 @@ INSERT INTO requests (client_id, agent_id, request_type, property_type, min_pric
 id| deal_number| property_id| buyer_id| seller_id| agent_id| deal_type| deal_date| deal_amount| commission_amount| contract_number| status| created_at
 INSERT INTO deals (deal_number, property_id, buyer_id, seller_id, agent_id, deal_type, deal_date, deal_amount, commission_amount, contract_number, status) VALUES
 ('D-2024-00001', 5, 5, 2, 2, 'sale', '2024-01-15', 8200000, 246000, 'ДКП-2024-001', 'completed'),
-('D-2024-00002', 1, 1, 2, 1, 'sale', '2024-02-20', 24500000, 735000, 'ДКП-2024-002', 'in_process'),
-('D-2024-00003', 3, 4, 6, 3, 'sale', '2024-03-10', 44000000, 1320000, 'ДКП-2024-003', 'completed'),
+('D-2024-00002', 1, 1, 2, 1, 'sale', '2024-02-20', 2450000, 85750, 'ДКП-2024-002', 'in_process'),
+('D-2024-00003', 3, 4, 6, 3, 'sale', '2024-03-10', 4400000, 132000, 'ДКП-2024-003', 'completed'),
 ('D-2024-00004', 2, NULL, 2, 2, 'rent', '2024-01-25', 60000, 1800, 'ДА-2024-001', 'completed'),
-('D-2024-00005', 4, 3, 3, 1, 'sale', '2024-03-01', 34000000, 1020000, 'ДКП-2024-004', 'in_process'),
-('D-2024-00006', 6, 4, 3, 3, 'sale', '2024-02-28', 11800000, 354000, 'ДКП-2024-005', 'cancelled');
+('D-2024-00005', 4, 3, 3, 1, 'sale', '2024-03-01', 3400000, 119000, 'ДКП-2024-004', 'in_process'),
+('D-2024-00006', 6, 4, 3, 3, 'sale', '2024-02-28', 1180000, 35400, 'ДКП-2024-005', 'cancelled');
 
 Таблица просмотров объектов
 id |property_id| client_id| agent_id| viewing_date| duration_minutes| client_feedback| created_at 
