@@ -52,3 +52,70 @@ $$ language plpgsql;
 
 -- доп. функционал
 create table schedule_of_cleaning_rooms (date_of_cleaning date not null, room_number varchar(3) not null, housemaid integer not null, foreign key (room_number) references rooms(number), foreign key (housemaid) references workers(id)); -- таблица для расписания уборок номеров (будет заполняться в приложении)
+
+
+-- представления
+create VIEW reservation_history as SELECT r.date_of_checkin, r.date_of_checkout, r.number_of_nights, r.total_price, c.id as client_id, c.name as client_name, c.surname as client_surname, c.phone_number as client_phone, w.id as admin_id, w.name as admin_name, b.id as bed_id, b.room_number, b.price_per_night as bed_price, rm.floor, rm.number_of_places FROM reservation r LEFT JOIN clients c ON r.client = c.id LEFT JOIN workers w ON r.administrator = w.id LEFT JOIN beds b ON r.bed = b.id LEFT JOIN rooms rm ON b.room_number = rm.number ORDER BY r.date_of_checkin DESC; -- представление для истории брони
+
+create VIEW current_reservations as select rh.*, CasE when rh.date_of_checkout > CURRENT_DATE THEN rh.date_of_checkout - CURRENT_DATE ELSE 0 END as nights_remaining FROM reservation_history rh where CURRENT_DATE BETWEEN rh.date_of_checkin and rh.date_of_checkout ORDER BY rh.room_number; -- представление о действующих бронях
+
+--представление для расписания уборки номеров
+CREATE VIEW cleaning_schedule_view AS
+SELECT 
+    sc.date_of_cleaning,
+    -- Информация о номере
+    sc.room_number,
+    r.floor,
+    r.number_of_places,
+    -- Информация о горничной
+    w.id as housemaid_id,
+    w.name as housemaid_name,
+    rol.name as housemaid_role,
+    -- Статус уборки (прошлая/будущая)
+    CASE 
+        WHEN sc.date_of_cleaning < CURRENT_DATE THEN 'Выполнена'
+        WHEN sc.date_of_cleaning = CURRENT_DATE THEN 'На сегодня'
+        ELSE 'Запланирована'
+    END as cleaning_status
+FROM schedule_of_cleaning_rooms sc
+LEFT JOIN rooms r ON sc.room_number = r.number
+LEFT JOIN workers w ON sc.housemaid = w.id
+LEFT JOIN roles rol ON w.role = rol.id
+ORDER BY sc.date_of_cleaning, r.floor, sc.room_number;
+
+-- представление о работниках с полной информацией о должности
+CREATE VIEW workers_info AS
+SELECT 
+    w.id,
+    w.name as full_name,
+    -- Разделение имени на части (если нужно)
+    split_part(w.name, ' ', 1) as first_name,
+    split_part(w.name, ' ', 2) as middle_name,
+    split_part(w.name, ' ', 3) as last_name,
+    r.id as role_id,
+    r.name as role_name,
+    -- Статус активности (можно добавить позже поле is_active в таблицу workers)
+    'Активен' as status -- временная заглушка
+FROM workers w
+LEFT JOIN roles r ON w.role = r.id
+ORDER BY r.id, w.name;
+
+-- Представление для свободных коек на определенную дату
+CREATE OR REPLACE VIEW available_beds_today AS
+SELECT 
+    b.id as bed_id,
+    b.room_number,
+    b.price_per_night,
+    r.floor,
+    r.number_of_places,
+    r.is_active as room_active
+FROM beds b
+LEFT JOIN rooms r ON b.room_number = r.number
+WHERE b.id NOT IN (
+    SELECT bed 
+    FROM reservation 
+    WHERE CURRENT_DATE BETWEEN date_of_checkin AND date_of_checkout
+)
+AND b.is_occupied = false
+AND r.is_active = true
+ORDER BY r.floor, b.room_number, b.id;
