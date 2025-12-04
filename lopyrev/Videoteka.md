@@ -2,18 +2,18 @@
 
 Таблица с фильмами
 У нас есть название фильма, год релиза, жанр, длительность фильма, описание, свой рейтинг и дата просмотра
-id|name|release_year|duration|description|my_rating
+CREATE TABLE movies (id SERIAL PRIMARY KEY, name VARCHAR(200) NOT NULL, release_year INTEGER, duration INTEGER, description TEXT, my_rating INTEGER CHECK (my_rating >= 1 AND my_rating <= 10));
 
 Таблица с актерами
 В этой таблице хранятся актеры
-id|actor_name|
+CREATE TABLE actors (id SERIAL PRIMARY KEY, actor_name VARCHAR(100) NOT NULL);
 
 Таблица жанров
 В этой таблице хранятся жанры
-id|ganre_name|
+CREATE TABLE genres (id SERIAL PRIMARY KEY, genre_name VARCHAR(50) UNIQUE NOT NULL);
 
 Таблица просмотров
-id|movie_id|viewing_date|notes
+CREATE TABLE viewings (id SERIAL PRIMARY KEY, movie_id INTEGER REFERENCES movies(id) ON DELETE CASCADE, viewing_date DATE NOT NULL DEFAULT CURRENT_DATE, notes TEXT);
 
 Связь фильм-актеры
 Здесь устанавливается связь между актерами и фильмами в которых они снимались
