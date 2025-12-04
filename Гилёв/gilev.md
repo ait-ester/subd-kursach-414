@@ -43,9 +43,30 @@ INSERT INTO requests (client_id, agent_id, request_type, property_type, min_pric
 
 Таблица сделок
 id| deal_number| property_id| buyer_id| seller_id| agent_id| deal_type| deal_date| deal_amount| commission_amount| contract_number| status| created_at
+INSERT INTO deals (deal_number, property_id, buyer_id, seller_id, agent_id, deal_type, deal_date, deal_amount, commission_amount, contract_number, status) VALUES
+('D-2024-00001', 5, 5, 2, 2, 'sale', '2024-01-15', 8200000, 246000, 'ДКП-2024-001', 'completed'),
+('D-2024-00002', 1, 1, 2, 1, 'sale', '2024-02-20', 24500000, 735000, 'ДКП-2024-002', 'in_process'),
+('D-2024-00003', 3, 4, 6, 3, 'sale', '2024-03-10', 44000000, 1320000, 'ДКП-2024-003', 'completed'),
+('D-2024-00004', 2, NULL, 2, 2, 'rent', '2024-01-25', 60000, 1800, 'ДА-2024-001', 'completed'),
+('D-2024-00005', 4, 3, 3, 1, 'sale', '2024-03-01', 34000000, 1020000, 'ДКП-2024-004', 'in_process'),
+('D-2024-00006', 6, 4, 3, 3, 'sale', '2024-02-28', 11800000, 354000, 'ДКП-2024-005', 'cancelled');
 
 Таблица просмотров объектов
 id |property_id| client_id| agent_id| viewing_date| duration_minutes| client_feedback| created_at 
+INSERT INTO view (property_id, client_id, agent_id, viewing_date, duration_minutes, client_feedback) VALUES
+(1, 1, 1, '2024-02-15 14:00:00', 45, 'Нравится ремонт, но цена высокая, будем торговаться'),
+(1, 4, 1, '2024-02-16 11:30:00', 30, 'Мало места для детской, ищем дальше'),
+(2, 5, 2, '2024-01-20 16:00:00', 25, 'Требует ремонта, но локация хорошая'),
+(3, 4, 3, '2024-03-05 12:00:00', 60, 'Идеально для нашей семьи, оформляем сделку'),
+(4, 3, 1, '2024-02-25 15:00:00', 40, 'Подходит для офиса, обсуждаем с партнерами'),
+(5, 5, 2, '2024-01-10 13:00:00', 20, 'Берем, устраивает все, особенно цена');
 
 Таблица задач
 id |title| description| assigned_to| due_date| priority| status| related_deal_id |created_at 
+INSERT INTO tasks (title, description, assigned_to, due_date, priority, status, related_deal_id) VALUES
+('Подготовить документы для сделки ДКП-2024-002', 'Собрать паспорта, выписки из ЕГРН, подготовить договор', 1, '2024-03-25', 'high', 'in_progress', 2),
+('Организовать просмотр квартиры на Тверской для новых клиентов', 'Клиенты из Питера, хотят посмотреть в субботу', 2, '2024-03-23', 'medium', 'pending', NULL),
+('Согласовать сумму комиссии по сделке ДКП-2024-004', 'Клиент торгуется, нужно убедить в нашей комиссии', 1, '2024-03-20', 'high', 'completed', 5),
+('Найти 3-комнатную квартиру для семьи Смирновых', 'Бюджет до 22 млн, районы: Центральный, Хамовники', 1, '2024-04-10', 'medium', 'in_progress', NULL),
+('Провести встречу с клиентом Волковой по продаже квартиры', 'Обсудить стратегию продаж, цену и рекламу', 2, '2024-03-22', 'medium', 'pending', NULL),
+('Отправить отчет по сделкам за март', 'Сформировать Excel-таблицу со всеми завершенными сделками', 6, '2024-04-05', 'low', 'pending', NULL);
