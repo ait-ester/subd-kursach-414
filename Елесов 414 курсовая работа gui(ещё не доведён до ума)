@@ -1,0 +1,1196 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+import psycopg2
+from datetime import date, datetime
+from tkcalendar import DateEntry  # pip(pip3) install tkcalendar
+
+class HotelManagementApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Система управления гостиницей")
+        self.root.geometry("1200x700")
+        
+        # Параметры подключения к базе данных
+        self.db_params = {
+            'host': 'localhost',
+            'database': 'elesov',  
+            'user': 'elesov',     
+            'password': '1224',  
+            'port': '5432'
+        }
+        
+        
+        self.setup_ui()
+        self.connect_to_db()
+        
+    def setup_ui(self):
+        # Создаем меню
+        self.create_menu()
+        
+        # Создаем вкладки
+        self.tab_control = ttk.Notebook(self.root)
+        
+        # Вкладка бронирования
+        self.tab_reservation = ttk.Frame(self.tab_control)
+        self.tab_control.add(self.tab_reservation, text='Бронирование')
+        self.setup_reservation_tab()
+        
+        # Вкладка клиенты
+        self.tab_clients = ttk.Frame(self.tab_control)
+        self.tab_control.add(self.tab_clients, text='Клиенты')
+        self.setup_clients_tab()
+        
+        # Вкладка номера
+        self.tab_rooms = ttk.Frame(self.tab_control)
+        self.tab_control.add(self.tab_rooms, text='Номера')
+        self.setup_rooms_tab()
+        
+        # Вкладка уборка
+        self.tab_cleaning = ttk.Frame(self.tab_control)
+        self.tab_control.add(self.tab_cleaning, text='Уборка')
+        self.setup_cleaning_tab()
+        
+        # Вкладка работники
+        self.tab_workers = ttk.Frame(self.tab_control)
+        self.tab_control.add(self.tab_workers, text='Работники')
+        self.setup_workers_tab()
+        
+        # Вкладка отчеты
+        self.tab_reports = ttk.Frame(self.tab_control)
+        self.tab_control.add(self.tab_reports, text='Отчеты')
+        self.setup_reports_tab()
+        
+        self.tab_control.pack(expand=1, fill="both")
+        
+    def create_menu(self):
+        menubar = tk.Menu(self.root)
+        self.root.config(menu=menubar)
+        
+        # Меню "Файл"
+        file_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Файл", menu=file_menu)
+        file_menu.add_command(label="Обновить данные", command=self.refresh_all)
+        file_menu.add_separator()
+        file_menu.add_command(label="Выход", command=self.root.quit)
+        
+        # Меню "Справка"
+        help_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Справка", menu=help_menu)
+        help_menu.add_command(label="О программе", command=self.show_about)
+    
+    def setup_reservation_tab(self):
+        # Левая панель - форма бронирования
+        left_frame = ttk.LabelFrame(self.tab_reservation, text="Новое бронирование")
+        left_frame.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+
+        # Выбор клиента
+        ttk.Label(left_frame, text="Выберите клиента:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        self.clients_combo = ttk.Combobox(left_frame, width=27, state="readonly")
+        self.clients_combo.grid(row=0, column=1, padx=5, pady=5)
+        #self.load_available_clients()
+        
+        # Поля для ввода данных клиента
+        #ttk.Label(left_frame, text="Имя:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        #self.client_name = ttk.Entry(left_frame, width=30)
+        #self.client_name.grid(row=0, column=1, padx=5, pady=5)
+        
+        #ttk.Label(left_frame, text="Фамилия:").grid(row=1, column=0, padx=5, pady=5, sticky="w")
+        #self.client_surname = ttk.Entry(left_frame, width=30)
+        #self.client_surname.grid(row=1, column=1, padx=5, pady=5)
+        
+        #ttk.Label(left_frame, text="Отчество:").grid(row=2, column=0, padx=5, pady=5, sticky="w")
+        #self.client_patronymic = ttk.Entry(left_frame, width=30)
+        #self.client_patronymic.grid(row=2, column=1, padx=5, pady=5)
+        
+        #tk.Label(left_frame, text="Телефон:").grid(row=3, column=0, padx=5, pady=5, sticky="w")
+        #self.client_phone = ttk.Entry(left_frame, width=30)
+        #self.client_phone.grid(row=3, column=1, padx=5, pady=5)
+        
+        #ttk.Label(left_frame, text="Email:").grid(row=4, column=0, padx=5, pady=5, sticky="w")
+        #self.client_email = ttk.Entry(left_frame, width=30)
+        #self.client_email.grid(row=4, column=1, padx=5, pady=5)
+        
+        #ttk.Label(left_frame, text="Паспорт (серия):").grid(row=5, column=0, padx=5, pady=5, sticky="w")
+        #self.passport_series = ttk.Entry(left_frame, width=10)
+        #self.passport_series.grid(row=5, column=1, padx=5, pady=5, sticky="w")
+        
+        #ttk.Label(left_frame, text="Паспорт (номер):").grid(row=6, column=0, padx=5, pady=5, sticky="w")
+        #self.passport_number = ttk.Entry(left_frame, width=15)
+        #self.passport_number.grid(row=6, column=1, padx=5, pady=5, sticky="w")
+        
+        # Даты заезда/выезда
+        ttk.Label(left_frame, text="Дата заезда:").grid(row=7, column=0, padx=5, pady=5, sticky="w")
+        self.checkin_date = DateEntry(left_frame, width=27, background='darkblue',
+                                      foreground='white', borderwidth=2, date_pattern='yyyy-mm-dd')
+        self.checkin_date.grid(row=7, column=1, padx=5, pady=5)
+        
+        ttk.Label(left_frame, text="Дата выезда:").grid(row=8, column=0, padx=5, pady=5, sticky="w")
+        self.checkout_date = DateEntry(left_frame, width=27, background='darkblue',
+                                       foreground='white', borderwidth=2, date_pattern='yyyy-mm-dd')
+        self.checkout_date.grid(row=8, column=1, padx=5, pady=5)
+        
+        # Выбор койки
+        ttk.Label(left_frame, text="Выберите койку:").grid(row=9, column=0, padx=5, pady=5, sticky="w")
+        self.bed_combo = ttk.Combobox(left_frame, width=27, state="readonly")
+        self.bed_combo.grid(row=9, column=1, padx=5, pady=5)
+        
+        # Кнопки
+        ttk.Button(left_frame, text="Показать свободные койки", 
+                  command=self.load_available_beds).grid(row=10, column=0, columnspan=2, pady=10)
+        
+        ttk.Button(left_frame, text="Создать бронь", 
+                  command=self.create_reservation).grid(row=11, column=0, columnspan=2, pady=5)
+        
+        # Правая панель - история бронирований
+        right_frame = ttk.LabelFrame(self.tab_reservation, text="История бронирований")
+        right_frame.pack(side="right", fill="both", expand=True, padx=10, pady=10)
+        
+        # Таблица с историей
+        columns = ("Дата заезда", "Дата выезда", "Клиент", "Номер", "Койка", "Цена")
+        self.reservation_tree = ttk.Treeview(right_frame, columns=columns, show="headings", height=20)
+        
+        for col in columns:
+            self.reservation_tree.heading(col, text=col)
+            self.reservation_tree.column(col, width=120)
+        
+        self.reservation_tree.pack(fill="both", expand=True, padx=5, pady=5)
+        
+        # Кнопки управления
+        btn_frame = ttk.Frame(right_frame)
+        btn_frame.pack(fill="x", padx=5, pady=5)
+        
+        ttk.Button(btn_frame, text="Обновить", 
+                  command=self.load_reservations).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Продлить проживание", 
+                  command=self.extend_stay).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Выселить", 
+                  command=self.checkout_client).pack(side="left", padx=5)
+    
+    def setup_clients_tab(self):
+        # Поиск клиентов
+        search_frame = ttk.Frame(self.tab_clients)
+        search_frame.pack(fill="x", padx=10, pady=10)
+        
+        ttk.Label(search_frame, text="Поиск клиента:").pack(side="left", padx=5)
+        self.client_search = ttk.Entry(search_frame, width=40)
+        self.client_search.pack(side="left", padx=5)
+        ttk.Button(search_frame, text="Найти", 
+                  command=self.search_client).pack(side="left", padx=5)
+        
+        # Таблица клиентов
+        columns = ("ID", "Фамилия", "Имя", "Отчество", "Телефон", "Email", "Паспорт")
+        self.clients_tree = ttk.Treeview(self.tab_clients, columns=columns, show="headings", height=25)
+        
+        for col in columns:
+            self.clients_tree.heading(col, text=col)
+            self.clients_tree.column(col, width=100)
+        
+        self.clients_tree.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Кнопки управления
+        btn_frame = ttk.Frame(self.tab_clients)
+        btn_frame.pack(fill="x", padx=10, pady=5)
+        
+        ttk.Button(btn_frame, text="Обновить", 
+                  command=self.load_clients).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Добавить клиента", 
+                  command=self.add_client_dialog).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Удалить клиента", 
+                  command=self.delite_client).pack(side="left", padx=5)
+    
+    def setup_rooms_tab(self):
+        # Фильтры для номеров
+        filter_frame = ttk.LabelFrame(self.tab_rooms, text="Фильтры")
+        filter_frame.pack(fill="x", padx=10, pady=10)
+        
+        ttk.Label(filter_frame, text="Этаж:").grid(row=0, column=0, padx=5, pady=5)
+        self.floor_filter = ttk.Combobox(filter_frame, values=["Все", "1", "2", "3", "4"], width=10)
+        self.floor_filter.grid(row=0, column=1, padx=5, pady=5)
+        self.floor_filter.set("Все")
+        
+        ttk.Label(filter_frame, text="Количество мест:").grid(row=0, column=2, padx=5, pady=5)
+        self.places_filter = ttk.Combobox(filter_frame, values=["Все", "1", "2", "3", "4"], width=10)
+        self.places_filter.grid(row=0, column=3, padx=5, pady=5)
+        self.places_filter.set("Все")
+        
+        ttk.Button(filter_frame, text="Применить фильтр", 
+                  command=self.load_rooms).grid(row=0, column=4, padx=10, pady=5)
+        
+        # Таблица номеров
+        columns = ("Номер", "Этаж", "Мест", "Свободно коек", "Занято коек", "Статус")
+        self.rooms_tree = ttk.Treeview(self.tab_rooms, columns=columns, show="headings", height=25)
+        
+        for col in columns:
+            self.rooms_tree.heading(col, text=col)
+            self.rooms_tree.column(col, width=100)
+        
+        self.rooms_tree.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Кнопки управления
+        btn_frame = ttk.Frame(self.tab_rooms)
+        btn_frame.pack(fill="x", padx=10, pady=5)
+        
+        ttk.Button(btn_frame, text="Обновить", 
+                  command=self.load_rooms).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Изменить статус", 
+                  command=self.toggle_room_status).pack(side="left", padx=5)
+    
+    def setup_cleaning_tab(self):
+        # Левая панель - добавление уборки
+        left_frame = ttk.LabelFrame(self.tab_cleaning, text="Добавить уборку")
+        left_frame.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+        
+        ttk.Label(left_frame, text="Дата уборки:").grid(row=0, column=0, padx=5, pady=10, sticky="w")
+        self.cleaning_date = DateEntry(left_frame, width=27, background='darkblue',
+                                      foreground='white', borderwidth=2, date_pattern='yyyy-mm-dd')
+        self.cleaning_date.grid(row=0, column=1, padx=5, pady=10)
+        
+        ttk.Label(left_frame, text="Номер:").grid(row=1, column=0, padx=5, pady=5, sticky="w")
+        self.cleaning_room = ttk.Combobox(left_frame, width=27, state="readonly")
+        self.cleaning_room.grid(row=1, column=1, padx=5, pady=5)
+        
+        ttk.Label(left_frame, text="Горничная:").grid(row=2, column=0, padx=5, pady=5, sticky="w")
+        self.cleaning_housemaid = ttk.Combobox(left_frame, width=27, state="readonly")
+        self.cleaning_housemaid.grid(row=2, column=1, padx=5, pady=5)
+        
+        ttk.Button(left_frame, text="Добавить уборку", 
+                  command=self.add_cleaning_schedule).grid(row=3, column=0, columnspan=2, pady=20)
+        
+        # Правая панель - расписание уборок
+        right_frame = ttk.LabelFrame(self.tab_cleaning, text="Расписание уборок")
+        right_frame.pack(side="right", fill="both", expand=True, padx=10, pady=10)
+        
+        # Фильтр по дате
+        filter_frame = ttk.Frame(right_frame)
+        filter_frame.pack(fill="x", padx=5, pady=5)
+        
+        ttk.Label(filter_frame, text="Показать с:").pack(side="left", padx=5)
+        self.cleaning_date_from = DateEntry(filter_frame, width=12, background='darkblue',
+                                           foreground='white', borderwidth=2, date_pattern='yyyy-mm-dd')
+        self.cleaning_date_from.pack(side="left", padx=5)
+        
+        ttk.Label(filter_frame, text="по:").pack(side="left", padx=5)
+        self.cleaning_date_to = DateEntry(filter_frame, width=12, background='darkblue',
+                                         foreground='white', borderwidth=2, date_pattern='yyyy-mm-dd')
+        self.cleaning_date_to.pack(side="left", padx=5)
+        
+        ttk.Button(filter_frame, text="Фильтровать", 
+                  command=self.load_cleaning_schedule).pack(side="left", padx=10)
+        
+        # Таблица уборок
+        columns = ("Дата", "Номер", "Этаж", "Горничная", "Статус")
+        self.cleaning_tree = ttk.Treeview(right_frame, columns=columns, show="headings", height=20)
+        
+        for col in columns:
+            self.cleaning_tree.heading(col, text=col)
+            self.cleaning_tree.column(col, width=100)
+        
+        self.cleaning_tree.pack(fill="both", expand=True, padx=5, pady=5)
+        
+        # Кнопки управления
+        btn_frame = ttk.Frame(right_frame)
+        btn_frame.pack(fill="x", padx=5, pady=5)
+        
+        ttk.Button(btn_frame, text="Обновить", 
+                  command=self.load_cleaning_schedule).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Удалить запись", 
+                  command=self.delete_cleaning_record).pack(side="left", padx=5)
+    
+    def setup_workers_tab(self):
+        # Таблица работников
+        columns = ("ID", "ФИО", "Должность")
+        self.workers_tree = ttk.Treeview(self.tab_workers, columns=columns, show="headings", height=25)
+        
+        for col in columns:
+            self.workers_tree.heading(col, text=col)
+            self.workers_tree.column(col, width=150)
+        
+        self.workers_tree.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Кнопки управления
+        btn_frame = ttk.Frame(self.tab_workers)
+        btn_frame.pack(fill="x", padx=10, pady=5)
+        
+        ttk.Button(btn_frame, text="Обновить", 
+                  command=self.load_workers).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Добавить работника", 
+                  command=self.add_worker_dialog).pack(side="left", padx=5)
+    
+    def setup_reports_tab(self):
+        # Статистика
+        stats_frame = ttk.LabelFrame(self.tab_reports, text="Статистика")
+        stats_frame.pack(fill="x", padx=10, pady=10)
+        
+        # Сегодняшние показатели
+        today_frame = ttk.Frame(stats_frame)
+        today_frame.pack(fill="x", padx=10, pady=10)
+        
+        self.stats_labels = {}
+        stats_data = [
+            ("Свободных номеров:", "free_rooms"),
+            ("Занятых номеров:", "occupied_rooms"),
+            ("Текущих постояльцев:", "current_guests"),
+            ("Выселений сегодня:", "checkouts_today"),
+            ("Заездов сегодня:", "checkins_today")
+        ]
+        
+        for i, (text, key) in enumerate(stats_data):
+            ttk.Label(today_frame, text=text, font=('Arial', 10)).grid(row=i//2, column=(i%2)*2, padx=10, pady=5, sticky="w")
+            self.stats_labels[key] = ttk.Label(today_frame, text="0", font=('Arial', 10, 'bold'))
+            self.stats_labels[key].grid(row=i//2, column=(i%2)*2+1, padx=10, pady=5, sticky="w")
+        
+        # Отчеты
+        reports_frame = ttk.LabelFrame(self.tab_reports, text="Отчеты")
+        reports_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Кнопки генерации отчетов
+        btn_frame = ttk.Frame(reports_frame)
+        btn_frame.pack(fill="x", padx=10, pady=10)
+        
+        ttk.Button(btn_frame, text="Отчет по загрузке номеров", 
+                  command=self.generate_occupancy_report).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Финансовый отчет", 
+                  command=self.generate_financial_report).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Отчет по уборкам", 
+                  command=self.generate_cleaning_report).pack(side="left", padx=5)
+        
+        # Текстовое поле для отображения отчетов
+        self.report_text = tk.Text(reports_frame, height=15, width=100)
+        self.report_text.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Кнопка обновления статистики
+        ttk.Button(reports_frame, text="Обновить статистику", 
+                  command=self.load_statistics).pack(pady=5)
+    
+    def connect_to_db(self):
+        try:
+            self.conn = psycopg2.connect(**self.db_params)
+            self.cursor = self.conn.cursor()
+            self.cursor.execute("Select id from clients")
+            #id = self.cursor.fetchfall()
+            #print(id)
+            messagebox.showinfo("Успех", "Подключение к базе данных установлено")
+            self.initial_load()
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Не удалось подключиться к БД: {str(e)}")
+    
+    def initial_load(self):
+        self.load_reservations()
+        self.load_clients()
+        self.load_rooms()
+        self.load_cleaning_schedule()
+        self.load_workers()
+        self.load_available_beds()
+        self.load_statistics()
+        self.load_rooms_for_cleaning()
+        self.load_housemaids()
+    
+    def load_reservations(self):
+        try:
+            self.cursor.execute("""
+                SELECT date_of_checkin, date_of_checkout, 
+                       CONCAT(client_name, ' ', client_surname) as client,
+                       room_number, bed_id, total_price
+                FROM reservation_history
+                ORDER BY date_of_checkin DESC
+                LIMIT 100
+            """)
+            
+            # Очистка таблицы
+            for item in self.reservation_tree.get_children():
+                self.reservation_tree.delete(item)
+            
+            # Заполнение данными
+            for row in self.cursor.fetchall():
+                self.reservation_tree.insert("", "end", values=row)
+                
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Не удалось загрузить бронирования: {str(e)}")
+    
+    def load_clients(self):
+        try:
+            self.cursor.execute("SELECT * FROM clients ORDER BY surname, name")
+            #id = len(self.cursor.fetchall())
+            #print(id)
+            
+            # Очистка таблицы
+            for item in self.clients_tree.get_children():
+                self.clients_tree.delete(item)
+            
+            # Заполнение данными
+            for row in self.cursor.fetchall():
+                self.clients_tree.insert("", "end", values=row)
+                
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Не удалось загрузить клиентов: {str(e)}")
+    
+    def delite_client(self):
+            try:
+                selected_item = self.clients_tree.selection()
+                item_data = self.clients_tree.item(selected_item[0])['values']
+                client_id = item_data[0]
+                print(client_id)
+                self.cursor.execute(f"DELETE FROM clients WHERE id={client_id}")
+                self.conn.commit()
+                messagebox.showinfo("Успех", "Клиент успешно удалён")
+                #dialog.destroy()
+                self.load_clients()
+            except Exception as e:
+                self.conn.rollback()
+                messagebox.showerror("Ошибка", f"Не удалось удалить клиента: {str(e)}")
+    
+    def load_rooms(self):
+        try:
+            floor_filter = self.floor_filter.get()
+            places_filter = self.places_filter.get()
+            
+            query = """
+                SELECT 
+                    r.number,
+                    r.floor,
+                    r.number_of_places,
+                    COUNT(CASE WHEN NOT b.is_occupied THEN 1 END) as free_beds,
+                    COUNT(CASE WHEN b.is_occupied THEN 1 END) as occupied_beds,
+                    CASE 
+                        WHEN r.is_active THEN 'Активен' 
+                        ELSE 'Неактивен' 
+                    END as status
+                FROM rooms r
+                LEFT JOIN beds b ON r.number = b.room_number
+                WHERE 1=1
+            """
+            
+            params = []
+            
+            if floor_filter != "Все":
+                query += " AND r.floor = %s"
+                params.append(int(floor_filter))
+            
+            if places_filter != "Все":
+                query += " AND r.number_of_places = %s"
+                params.append(int(places_filter))
+            
+            query += " GROUP BY r.number, r.floor, r.number_of_places, r.is_active ORDER BY r.floor, r.number"
+            
+            self.cursor.execute(query, params)
+            
+            # Очистка таблицы
+            for item in self.rooms_tree.get_children():
+                self.rooms_tree.delete(item)
+            
+            # Заполнение данными
+            for row in self.cursor.fetchall():
+                self.rooms_tree.insert("", "end", values=row)
+                
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Не удалось загрузить номера: {str(e)}")
+    
+    def load_cleaning_schedule(self):
+        try:
+            date_from = self.cleaning_date_from.get_date()
+            date_to = self.cleaning_date_to.get_date()
+            
+            query = """
+                SELECT date_of_cleaning, room_number, floor, housemaid_name, cleaning_status
+                FROM cleaning_schedule_view
+                WHERE date_of_cleaning BETWEEN %s AND %s
+                ORDER BY date_of_cleaning, room_number
+            """
+            
+            self.cursor.execute(query, (date_from, date_to))
+            
+            # Очистка таблицы
+            for item in self.cleaning_tree.get_children():
+                self.cleaning_tree.delete(item)
+            
+            # Заполнение данными
+            for row in self.cursor.fetchall():
+                self.cleaning_tree.insert("", "end", values=row)
+                
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Не удалось загрузить расписание уборок: {str(e)}")
+    
+    def load_workers(self):
+        try:
+            self.cursor.execute("SELECT id, full_name, role_name FROM workers_info ORDER BY id")
+            
+            # Очистка таблицы
+            for item in self.workers_tree.get_children():
+                self.workers_tree.delete(item)
+            
+            # Заполнение данными
+            for row in self.cursor.fetchall():
+                self.workers_tree.insert("", "end", values=row)
+                
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Не удалось загрузить работников: {str(e)}")
+
+    
+    def load_available_clients(self):
+        try:
+            self.cursor.execute("""
+                SELECT id, name, surname, surname1 FROM clients;
+            """)
+            
+            client = self.cursor.fetchall()
+            
+            # Обновление выпадающего списка
+            self.clients_combo['values'] = [f"Клиент #{client[0]} - {client[1]} {client[2]}" for bed in client]     
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Не удалось загрузить свободные койки: {str(e)}")
+    
+    def load_available_beds(self):
+        try:
+            checkin = self.checkin_date.get_date()
+            checkout = self.checkout_date.get_date()
+            
+            if checkin >= checkout:
+                messagebox.showwarning("Предупреждение", "Дата выезда должна быть позже даты заезда")
+                return
+            
+            self.cursor.execute("""
+                SELECT b.id, b.room_number, b.price_per_night, r.floor, r.number_of_places
+                FROM beds b
+                JOIN rooms r ON b.room_number = r.number
+                WHERE b.id NOT IN (
+                    SELECT bed 
+                    FROM reservation 
+                    WHERE (%s, %s) OVERLAPS (date_of_checkin, date_of_checkout)
+                )
+                AND b.is_occupied = false
+                AND r.is_active = true
+                ORDER BY r.floor, b.room_number, b.price_per_night
+            """, (checkin, checkout))
+            
+            beds = self.cursor.fetchall()
+            
+            # Обновление выпадающего списка
+            self.bed_combo['values'] = [f"Койка #{bed[0]} - {bed[1]} ({bed[2]} руб./ночь)" for bed in beds]
+            if beds:
+                self.bed_combo.current(0)
+            else:
+                self.bed_combo.set('')
+                messagebox.showinfo("Информация", "Нет свободных коек на выбранные даты")
+                
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Не удалось загрузить свободные койки: {str(e)}")
+    
+    def load_statistics(self):
+        try:
+            today = date.today()
+            
+            # Свободные и занятые номера
+            self.cursor.execute("""
+                SELECT 
+                    COUNT(DISTINCT CASE WHEN r.is_active THEN r.number END) as total_rooms,
+                    COUNT(DISTINCT CASE WHEN r.is_active AND b.is_occupied = false THEN r.number END) as free_rooms,
+                    COUNT(DISTINCT CASE WHEN b.is_occupied THEN r.number END) as occupied_rooms
+                FROM rooms r
+                LEFT JOIN beds b ON r.number = b.room_number
+            """)
+            room_stats = self.cursor.fetchone()
+            
+            # Текущие постояльцы
+            self.cursor.execute("""
+                SELECT COUNT(DISTINCT client) 
+                FROM reservation 
+                WHERE %s BETWEEN date_of_checkin AND date_of_checkout
+            """, (today,))
+            current_guests = self.cursor.fetchone()[0]
+            
+            # Заезды и выезды сегодня
+            self.cursor.execute("""
+                SELECT 
+                    COUNT(CASE WHEN date_of_checkin = %s THEN 1 END) as checkins,
+                    COUNT(CASE WHEN date_of_checkout = %s THEN 1 END) as checkouts
+                FROM reservation
+            """, (today, today))
+            daily_stats = self.cursor.fetchone()
+            
+            # Обновление меток
+            self.stats_labels['free_rooms'].config(text=f"{room_stats[1]}/{room_stats[0]}")
+            self.stats_labels['occupied_rooms'].config(text=f"{room_stats[2]}/{room_stats[0]}")
+            self.stats_labels['current_guests'].config(text=str(current_guests))
+            self.stats_labels['checkouts_today'].config(text=str(daily_stats[1]))
+            self.stats_labels['checkins_today'].config(text=str(daily_stats[0]))
+            
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Не удалось загрузить статистику: {str(e)}")
+    
+    def load_rooms_for_cleaning(self):
+        try:
+            self.cursor.execute("SELECT number FROM rooms WHERE is_active = true ORDER BY number")
+            rooms = [row[0] for row in self.cursor.fetchall()]
+            self.cleaning_room['values'] = rooms
+            if rooms:
+                self.cleaning_room.current(0)
+                
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Не удалось загрузить номера: {str(e)}")
+    
+    def load_housemaids(self):
+        try:
+            self.cursor.execute("SELECT id, name FROM workers WHERE role = 2 ORDER BY name")
+            housemaids = [f"{row[0]}: {row[1]}" for row in self.cursor.fetchall()]
+            self.cleaning_housemaid['values'] = housemaids
+            if housemaids:
+                self.cleaning_housemaid.current(0)
+                
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Не удалось загрузить горничных: {str(e)}")
+    
+    def create_reservation(self):
+        try:
+            # Проверка заполнения обязательных полей
+            required_fields = [
+                (self.client_name, "Имя"),
+                (self.client_surname, "Фамилия"),
+                (self.client_phone, "Телефон"),
+                (self.passport_series, "Серия паспорта"),
+                (self.passport_number, "Номер паспорта"),
+            ]
+            
+            for field, name in required_fields:
+                if not field.get().strip():
+                    messagebox.showwarning("Предупреждение", f"Поле '{name}' обязательно для заполнения")
+                    return
+            
+            bed_info = self.bed_combo.get()
+            if not bed_info:
+                messagebox.showwarning("Предупреждение", "Выберите койку")
+                return
+            
+            bed_id = int(bed_info.split('#')[1].split(' ')[0])
+            
+            # Добавление клиента
+            self.cursor.execute("""
+                INSERT INTO clients (name, surname, surname1, phone_number, email, passport_series, passport_number)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """, (
+                self.client_name.get().strip(),
+                self.client_surname.get().strip(),
+                self.client_patronymic.get().strip() or None,
+                self.client_phone.get().strip(),
+                self.client_email.get().strip() or None,
+                self.passport_series.get().strip(),
+                self.passport_number.get().strip()
+            ))
+            
+            client_id = self.cursor.fetchone()[0]
+            
+            # Получение ID администратора (первый администратор)
+            self.cursor.execute("SELECT id FROM workers WHERE role = 1 LIMIT 1")
+            admin_id = self.cursor.fetchone()[0]
+            
+            # Расчет количества ночей и цены
+            checkin = self.checkin_date.get_date()
+            checkout = self.checkout_date.get_date()
+            nights = (checkout - checkin).days
+            self.cursor.execute("SELECT price_per_night FROM beds WHERE id = %s", (bed_id,))
+            price_per_night = self.cursor.fetchone()[0]
+            total_price = nights * price_per_night
+            
+            # Создание брони
+            self.cursor.execute("""
+                INSERT INTO reservation (date_of_checkin, date_of_checkout, client, administrator, 
+                                        bed, number_of_nights, total_price)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (checkin, checkout, client_id, admin_id, bed_id, nights, total_price))
+            
+            # Обновление статуса койки
+            self.cursor.execute("UPDATE beds SET is_occupied = true WHERE id = %s", (bed_id,))
+            
+            self.conn.commit()
+            
+            messagebox.showinfo("Успех", "Бронирование успешно создано")
+            
+            # Очистка полей
+            self.client_name.delete(0, tk.END)
+            self.client_surname.delete(0, tk.END)
+            self.client_patronymic.delete(0, tk.END)
+            self.client_phone.delete(0, tk.END)
+            self.client_email.delete(0, tk.END)
+            self.passport_series.delete(0, tk.END)
+            self.passport_number.delete(0, tk.END)
+            self.bed_combo.set('')
+            
+            # Обновление данных
+            self.load_reservations()
+            self.load_rooms()
+            self.load_statistics()
+            
+        except Exception as e:
+            self.conn.rollback()
+            messagebox.showerror("Ошибка", f"Не удалось создать бронирование: {str(e)}")
+    
+    def extend_stay(self):
+        try:
+            selected_item = self.reservation_tree.selection()
+            if not selected_item:
+                messagebox.showwarning("Предупреждение", "Выберите бронирование для продления")
+                return
+            
+            # Диалог продления
+            dialog = tk.Toplevel(self.root)
+            dialog.title("Продление проживания")
+            dialog.geometry("300x150")
+            
+            ttk.Label(dialog, text="Новая дата выезда:").pack(pady=10)
+            new_date = DateEntry(dialog, width=27, background='darkblue',
+                                foreground='white', borderwidth=2, date_pattern='yyyy-mm-dd')
+            new_date.pack(pady=10)
+            
+            def apply_extension():
+                try:
+                    item_data = self.reservation_tree.item(selected_item[0])['values']
+                    
+                    # Получение client_id из бронирования
+                    self.cursor.execute("""
+                        SELECT client FROM reservation 
+                        WHERE date_of_checkin = %s AND bed = %s
+                    """, (item_data[0], int(item_data[4].split('#')[1])))
+                    
+                    client_id = self.cursor.fetchone()[0]
+                    
+                    # Вызов процедуры продления
+                    self.cursor.callproc('extension', (client_id, new_date.get_date()))
+                    
+                    # Пересчет стоимости
+                    self.cursor.execute("""
+                        UPDATE reservation 
+                        SET number_of_nights = date_of_checkout - date_of_checkin,
+                            total_price = (date_of_checkout - date_of_checkin) * 
+                                         (SELECT price_per_night FROM beds WHERE id = %s)
+                        WHERE client = %s
+                    """, (int(item_data[4].split('#')[1]), client_id))
+                    
+                    self.conn.commit()
+                    
+                    messagebox.showinfo("Успех", "Проживание успешно продлено")
+                    dialog.destroy()
+                    self.load_reservations()
+                    
+                except Exception as e:
+                    self.conn.rollback()
+                    messagebox.showerror("Ошибка", f"Не удалось продлить проживание: {str(e)}")
+            
+            ttk.Button(dialog, text="Применить", command=apply_extension).pack(pady=10)
+            
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Ошибка при продлении: {str(e)}")
+    
+    def checkout_client(self):
+        try:
+            selected_item = self.reservation_tree.selection()
+            if not selected_item:
+                messagebox.showwarning("Предупреждение", "Выберите бронирование для выселения")
+                return
+            
+            item_data = self.reservation_tree.item(selected_item[0])['values']
+            
+            if messagebox.askyesno("Подтверждение", "Вы уверены, что хотите выселить клиента?"):
+                # Получение bed_id
+                bed_id = int(item_data[4].split('#')[1])
+                
+                # Обновление статуса койки
+                self.cursor.execute("UPDATE beds SET is_occupied = false WHERE id = %s", (bed_id,))
+                
+                # Обновление даты выезда на сегодня (если раньше)
+                self.cursor.execute("""
+                    UPDATE reservation 
+                    SET date_of_checkout = CURRENT_DATE
+                    WHERE bed = %s AND CURRENT_DATE BETWEEN date_of_checkin AND date_of_checkout
+                """, (bed_id,))
+                
+                self.conn.commit()
+                
+                messagebox.showinfo("Успех", "Клиент успешно выселен")
+                
+                # Обновление данных
+                self.load_reservations()
+                self.load_rooms()
+                self.load_statistics()
+                
+        except Exception as e:
+            self.conn.rollback()
+            messagebox.showerror("Ошибка", f"Не удалось выселить клиента: {str(e)}")
+    
+    def add_client_dialog(self):
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Добавить клиента")
+        dialog.geometry("400x400")
+        self.cursor.execute("Select id from clients")
+        id = len(self.cursor.fetchall())+1
+        fields = [
+            ("Имя:", "client_name"),
+            ("Фамилия:", "client_surname"),
+            ("Отчество:", "client_patronymic"),
+            ("Телефон:", "client_phone"),
+            ("Email:", "client_email"),
+            ("Паспорт серия:", "passport_series"),
+            ("Паспорт номер:", "passport_number")
+        ]
+        
+        entries = {}
+        
+        for i, (label, key) in enumerate(fields):
+            ttk.Label(dialog, text=label).grid(row=i, column=0, padx=10, pady=5, sticky="w")
+            entries[key] = ttk.Entry(dialog, width=30)
+            entries[key].grid(row=i, column=1, padx=10, pady=5)
+        
+        #id = len(self.cursor.fetchall())+1
+        #print(id)
+        
+        def save_client():
+            try:
+                self.cursor.execute("""
+                    INSERT INTO clients (id, name, surname, surname1, phone_number, email, passport_series, passport_number)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    id,
+                    entries['client_name'].get().strip(),
+                    entries['client_surname'].get().strip(),
+                    entries['client_patronymic'].get().strip() or None,
+                    entries['client_phone'].get().strip(),
+                    entries['client_email'].get().strip() or None,
+                    entries['passport_series'].get().strip(),
+                    entries['passport_number'].get().strip()
+                ))
+                
+                self.conn.commit()
+                messagebox.showinfo("Успех", "Клиент успешно добавлен")
+                dialog.destroy()
+                self.load_clients()
+                
+            except Exception as e:
+                self.conn.rollback()
+                messagebox.showerror("Ошибка", f"Не удалось добавить клиента: {str(e)}")
+        
+        ttk.Button(dialog, text="Сохранить", command=save_client).grid(row=len(fields), column=0, columnspan=2, pady=20)
+
+    
+    def edit_client(self):
+        try:
+            selected_item = self.clients_tree.selection()
+            if not selected_item:
+                messagebox.showwarning("Предупреждение", "Выберите клиента для редактирования")
+                return
+            
+            item_data = self.clients_tree.item(selected_item[0])['values']
+            client_id = item_data[0]
+            
+            dialog = tk.Toplevel(self.root)
+            dialog.title("Редактировать клиента")
+            dialog.geometry("400x400")
+            
+            fields = [
+                ("Имя:", "client_name", item_data[2]),
+                ("Фамилия:", "client_surname", item_data[1]),
+                ("Отчество:", "client_patronymic", item_data[3] if len(item_data) > 3 else ""),
+                ("Телефон:", "client_phone", item_data[4]),
+                ("Email:", "client_email", item_data[5] if len(item_data) > 5 else ""),
+                ("Паспорт серия:", "passport_series", item_data[6].split(' ')[0] if len(item_data) > 6 else ""),
+                ("Паспорт номер:", "passport_number", item_data[6].split(' ')[1] if len(item_data) > 6 else "")
+            ]
+            
+            entries = {}
+            
+            for i, (label, key, value) in enumerate(fields):
+                ttk.Label(dialog, text=label).grid(row=i, column=0, padx=10, pady=5, sticky="w")
+                entries[key] = ttk.Entry(dialog, width=30)
+                entries[key].insert(0, value)
+                entries[key].grid(row=i, column=1, padx=10, pady=5)
+        
+            def update_client():
+                try:
+                    self.cursor.execute("""
+                        UPDATE clients 
+                        SET name = %s, surname = %s, surname1 = %s, 
+                            phone_number = %s, email = %s, 
+                            passport_series = %s, passport_number = %s
+                        WHERE id = %s
+                    """, (
+                        entries['client_name'].get().strip(),
+                        entries['client_surname'].get().strip(),
+                        entries['client_patronymic'].get().strip() or None,
+                        entries['client_phone'].get().strip(),
+                        entries['client_email'].get().strip() or None,
+                        entries['passport_series'].get().strip(),
+                        entries['passport_number'].get().strip(),
+                        client_id
+                    ))
+                    
+                    self.conn.commit()
+                    messagebox.showinfo("Успех", "Данные клиента успешно обновлены")
+                    dialog.destroy()
+                    self.load_clients()
+                    
+                except Exception as e:
+                    self.conn.rollback()
+                    messagebox.showerror("Ошибка", f"Не удалось обновить данные: {str(e)}")
+            
+            ttk.Button(dialog, text="Сохранить", command=update_client).grid(row=len(fields), column=0, columnspan=2, pady=20)
+            
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Ошибка при редактировании: {str(e)}")
+    
+    def search_client(self):
+        try:
+            search_text = self.client_search.get().strip()
+            if not search_text:
+                self.load_clients()
+                return
+            
+            self.cursor.execute("""
+                SELECT * FROM clients 
+                WHERE LOWER(name) LIKE %s OR LOWER(surname) LIKE %s 
+                   OR LOWER(phone_number) LIKE %s OR LOWER(passport_series) LIKE %s
+                ORDER BY surname, name
+            """, (f"%{search_text.lower()}%", f"%{search_text.lower()}%", 
+                  f"%{search_text.lower()}%", f"%{search_text.lower()}%"))
+            
+            # Очистка таблицы
+            for item in self.clients_tree.get_children():
+                self.clients_tree.delete(item)
+            
+            # Заполнение данными
+            for row in self.cursor.fetchall():
+                self.clients_tree.insert("", "end", values=row)
+                
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Ошибка при поиске: {str(e)}")
+    
+    def toggle_room_status(self):
+        try:
+            selected_item = self.rooms_tree.selection()
+            if not selected_item:
+                messagebox.showwarning("Предупреждение", "Выберите номер для изменения статуса")
+                return
+            
+            room_number = self.rooms_tree.item(selected_item[0])['values'][0]
+            current_status = self.rooms_tree.item(selected_item[0])['values'][5]
+            
+            new_status = not (current_status == "Активен")
+            
+            self.cursor.execute("UPDATE rooms SET is_active = %s WHERE number = %s", (new_status, room_number))
+            self.conn.commit()
+            
+            messagebox.showinfo("Успех", f"Статус номера {room_number} изменен")
+            self.load_rooms()
+            
+        except Exception as e:
+            self.conn.rollback()
+            messagebox.showerror("Ошибка", f"Не удалось изменить статус: {str(e)}")
+    
+    def add_cleaning_schedule(self):
+        try:
+            if not all([self.cleaning_date.get_date(), self.cleaning_room.get(), self.cleaning_housemaid.get()]):
+                messagebox.showwarning("Предупреждение", "Заполните все поля")
+                return
+            
+            room = self.cleaning_room.get()
+            housemaid_id = int(self.cleaning_housemaid.get().split(':')[0])
+            
+            self.cursor.execute("""
+                INSERT INTO schedule_of_cleaning_rooms (date_of_cleaning, room_number, housemaid)
+                VALUES (%s, %s, %s)
+            """, (self.cleaning_date.get_date(), room, housemaid_id))
+            
+            self.conn.commit()
+            
+            messagebox.showinfo("Успех", "Уборка добавлена в расписание")
+            self.load_cleaning_schedule()
+            
+        except Exception as e:
+            self.conn.rollback()
+            messagebox.showerror("Ошибка", f"Не удалось добавить уборку: {str(e)}")
+    
+    def delete_cleaning_record(self):
+        try:
+            selected_item = self.cleaning_tree.selection()
+            if not selected_item:
+                messagebox.showwarning("Предупреждение", "Выберите запись для удаления")
+                return
+            
+            item_data = self.cleaning_tree.item(selected_item[0])['values']
+            
+            if messagebox.askyesno("Подтверждение", "Удалить запись об уборке?"):
+                self.cursor.execute("""
+                    DELETE FROM schedule_of_cleaning_rooms 
+                    WHERE date_of_cleaning = %s AND room_number = %s
+                """, (item_data[0], item_data[1]))
+                
+                self.conn.commit()
+                
+                messagebox.showinfo("Успех", "Запись удалена")
+                self.load_cleaning_schedule()
+                
+        except Exception as e:
+            self.conn.rollback()
+            messagebox.showerror("Ошибка", f"Не удалось удалить запись: {str(e)}")
+    
+    def add_worker_dialog(self):
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Добавить работника")
+        dialog.geometry("400x300")
+        
+        ttk.Label(dialog, text="ФИО:").grid(row=0, column=0, padx=10, pady=5, sticky="w")
+        worker_name = ttk.Entry(dialog, width=30)
+        worker_name.grid(row=0, column=1, padx=10, pady=5)
+        
+        ttk.Label(dialog, text="Должность:").grid(row=1, column=0, padx=10, pady=5, sticky="w")
+        
+        self.cursor.execute("SELECT id, name FROM roles ORDER BY id")
+        roles = self.cursor.fetchall()
+        role_var = tk.StringVar()
+        role_combo = ttk.Combobox(dialog, textvariable=role_var, width=27, state="readonly")
+        role_combo['values'] = [f"{role[0]}: {role[1]}" for role in roles]
+        if roles:
+            role_combo.current(0)
+        role_combo.grid(row=1, column=1, padx=10, pady=5)
+        
+        def save_worker():
+            try:
+                self.cursor.execute("Select id from workers")
+                id = len(self.cursor.fetchall())+1
+                role_id = int(role_combo.get().split(':')[0])
+                
+                self.cursor.execute("""
+                    INSERT INTO workers (id, name, role)
+                    VALUES (%s, %s, %s)
+                """, (id, worker_name.get().strip(), role_id))
+                
+                self.conn.commit()
+                messagebox.showinfo("Успех", "Работник успешно добавлен")
+                dialog.destroy()
+                self.load_workers()
+                
+            except Exception as e:
+                self.conn.rollback()
+                messagebox.showerror("Ошибка", f"Не удалось добавить работника: {str(e)}")
+        
+        ttk.Button(dialog, text="Сохранить", command=save_worker).grid(row=2, column=0, columnspan=2, pady=20)
+    
+    def generate_occupancy_report(self):
+        try:
+            self.cursor.execute("""
+                SELECT 
+                    r.floor,
+                    COUNT(DISTINCT r.number) as total_rooms,
+                    COUNT(DISTINCT CASE WHEN b.is_occupied THEN r.number END) as occupied_rooms,
+                    ROUND(COUNT(DISTINCT CASE WHEN b.is_occupied THEN r.number END) * 100.0 / COUNT(DISTINCT r.number), 2) as occupancy_rate
+                FROM rooms r
+                LEFT JOIN beds b ON r.number = b.room_number
+                WHERE r.is_active = true
+                GROUP BY r.floor
+                ORDER BY r.floor
+            """)
+            
+            report = "Отчет по загрузке номеров\n" + "="*50 + "\n\n"
+            report += "Этаж | Всего номеров | Занято | Загрузка (%)\n"
+            report += "-"*50 + "\n"
+            
+            total_rooms = 0
+            total_occupied = 0
+            
+            for row in self.cursor.fetchall():
+                report += f"{row[0]:^5} | {row[1]:^13} | {row[2]:^6} | {row[3]:^12}\n"
+                total_rooms += row[1]
+                total_occupied += row[2]
+            
+            if total_rooms > 0:
+                total_rate = (total_occupied / total_rooms) * 100
+                report += "-"*50 + "\n"
+                report += f"Итого | {total_rooms:^13} | {total_occupied:^6} | {total_rate:^12.2f}\n"
+            
+            self.report_text.delete(1.0, tk.END)
+            self.report_text.insert(1.0, report)
+            
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Не удалось сгенерировать отчет: {str(e)}")
+    
+    def generate_financial_report(self):
+        try:
+            self.cursor.execute("""
+                SELECT 
+                    EXTRACT(MONTH FROM date_of_checkin) as month,
+                    EXTRACT(YEAR FROM date_of_checkin) as year,
+                    COUNT(*) as bookings_count,
+                    SUM(total_price) as total_income,
+                    AVG(total_price) as avg_booking_value
+                FROM reservation
+                WHERE date_of_checkin >= CURRENT_DATE - INTERVAL '6 months'
+                GROUP BY EXTRACT(YEAR FROM date_of_checkin), EXTRACT(MONTH FROM date_of_checkin)
+                ORDER BY year DESC, month DESC
+            """)
+            
+            report = "Финансовый отчет (последние 6 месяцев)\n" + "="*60 + "\n\n"
+            report += "Месяц     | Бронирования | Общий доход | Средний чек\n"
+            report += "-"*60 + "\n"
+            
+            total_bookings = 0
+            total_income = 0
+            
+            for row in self.cursor.fetchall():
+                month_year = f"{int(row[0]):02d}/{int(row[1])}"
+                report += f"{month_year:^10} | {row[2]:^12} | {row[3]:^11.2f} | {row[4]:^11.2f}\n"
+                total_bookings += row[2]
+                total_income += row[3]
+            
+            report += "-"*60 + "\n"
+            report += f"Итого     | {total_bookings:^12} | {total_income:^11.2f} | {(total_income/total_bookings if total_bookings > 0 else 0):^11.2f}\n"
+            
+            self.report_text.delete(1.0, tk.END)
+            self.report_text.insert(1.0, report)
+            
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Не удалось сгенерировать отчет: {str(e)}")
+    
+    def generate_cleaning_report(self):
+        try:
+            self.cursor.execute("""
+                SELECT 
+                    housemaid_name,
+                    COUNT(*) as cleanings_count,
+                    COUNT(DISTINCT room_number) as unique_rooms,
+                    MIN(date_of_cleaning) as first_cleaning,
+                    MAX(date_of_cleaning) as last_cleaning
+                FROM cleaning_schedule_view
+                GROUP BY housemaid_name
+                ORDER BY cleanings_count DESC
+            """)
+            
+            report = "Отчет по уборкам\n" + "="*70 + "\n\n"
+            report += "Горничная           | Уборок | Уникальных номеров | Первая уборка | Последняя уборка\n"
+            report += "-"*70 + "\n"
+            
+            for row in self.cursor.fetchall():
+                report += f"{row[0]:<20} | {row[1]:^6} | {row[2]:^18} | {row[3]:^13} | {row[4]:^15}\n"
+            
+            self.report_text.delete(1.0, tk.END)
+            self.report_text.insert(1.0, report)
+            
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Не удалось сгенерировать отчет: {str(e)}")
+    
+    def refresh_all(self):
+        self.initial_load()
+        messagebox.showinfo("Информация", "Все данные обновлены")
+    
+    def show_about(self):
+        messagebox.showinfo("О программе", 
+                          "Система управления гостиницей\n\n"
+                          "Версия 1.0\n"
+                          "Разработано для управления бронированиями,\n"
+                          "клиентами, номерами и персоналом гостиницы.")
+    
+    def __del__(self):
+        if hasattr(self, 'conn'):
+            self.cursor.close()
+            self.conn.close()
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = HotelManagementApp(root)
+    root.mainloop()
