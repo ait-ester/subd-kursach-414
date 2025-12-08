@@ -1,255 +1,212 @@
-БД для учета автотоваров в магазине этих самых автотоваров, структура еще в разработке как и все остальное, продакшн пока не начат
+# Пояснительная записка к проекту БД «Склад автотоваров»
 
+### 1. Введение и постановка задачи
+Моей задачей была разработка структуры базы данных для автоматизации работы склада автозапчастей. В отличие от обычного магазина, склад работает не с розничными покупателями, а с контрагентами (поставщиками и оптовыми клиентами), а также требует строгого учета мест хранения товаров.
 
-# Пояснительная записка к проекту базы данных «Автомагазин»
+В качестве СУБД я выбрал **PostgreSQL**. Этот выбор обусловлен тем, что Postgres отлично справляется с высокими нагрузками, поддерживает сложные транзакции (ACID) и имеет мощный механизм триггеров, который я использовал для автоматического пересчета остатков.
 
-### 1. Введение и выбор инструментов
-Для реализации системы хранения данных я выбрал СУБД **PostgreSQL**. Мой выбор обусловлен тем, что это мощная объектно-реляционная система, поддерживающая стандарты SQL, строгую типизацию данных и обеспечивающая высокую надежность (ACID). В будущем, при написании backend-части на Python, PostgreSQL отлично интегрируется через библиотеки `psycopg2` или `SQLAlchemy`.
+### 2. Проектирование схемы данных (Анализ предметной области)
+Перед написанием кода я изучил, как работает реальный склад. Я выделил следующие ключевые требования:
+1.  **Товары**: Нужны не только название и цена, но и **Артикул** (Part Number), так как в автобизнесе это основной идентификатор.
+2.  **Адресное хранение**: Кладовщик не должен искать деталь по всему складу. У каждого товара должен быть адрес (Ряд-Стеллаж-Полка).
+3.  **Единый реестр контрагентов**: Нет смысла делить таблицы на «Поставщиков» и «Клиентов», так как иногда мы можем вернуть товар поставщику (он становится получателем). Я создал единую сущность `contractors`.
+4.  **Движение товара**: Вместо «Продаж» на складе существуют «Движения» (Приход и Расход).
 
-### 2. Проектирование схемы данных (Логика)
-Перед написанием кода я проанализировал предметную область. Хранить всё в одной таблице (Excel-стиль) неправильно, так как это приведет к дублированию данных и аномалиям при обновлении.
+Я спроектировал базу данных в **3-й нормальной форме (3NF)**, чтобы избежать дублирования данных.
 
-Я спроектировал базу данных, приведенную к **3-й нормальной форме (3NF)**.
-Мной были выделены следующие сущности:
-1.  **Категории (`categories`)**: Чтобы не писать «Ходовая» каждый раз вручную.
-2.  **Производители (`manufacturers`)**: Бренд для запчасти критически важен.
-3.  **Товары (`products`)**: Основная таблица с ценами и остатками.
-4.  **Клиенты (`customers`)**: Кто покупает.
-5.  **Заказы (`orders`)**: «Шапка» чека (дата, кто купил, статус).
-6.  **Позиции заказа (`order_items`)**: Что именно лежит в чеке (связь многие-ко-многим между заказом и товаром).
+### 3. Реализация структуры БД (SQL-код)
 
-### 3. Реализация (SQL код)
-
-Ниже представлен SQL-скрипт, который я разработал для инициализации базы данных.
+Вот скрипт инициализации, который я написал.
 
 ```sql
--- 1. Таблица категорий (например: Двигатель, Подвеска, Масла)
+-- Очистка (на случай перезапуска скрипта)
+DROP TABLE IF EXISTS movement_items CASCADE;
+DROP TABLE IF EXISTS stock_movements CASCADE;
+DROP TABLE IF EXISTS products CASCADE;
+DROP TABLE IF EXISTS contractors CASCADE;
+DROP TABLE IF EXISTS manufacturers CASCADE;
+DROP TABLE IF EXISTS categories CASCADE;
+
+-- 1. Справочник категорий (Двигатель, Кузов, Электрика)
 CREATE TABLE categories (
     category_id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL UNIQUE,
-    description TEXT
+    name VARCHAR(100) NOT NULL UNIQUE
 );
 
--- 2. Таблица производителей (например: Bosch, Denso, Toyota)
+-- 2. Справочник производителей (Bosch, VAG, Toyota)
 CREATE TABLE manufacturers (
     manufacturer_id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
     country VARCHAR(50)
 );
 
--- 3. Таблица клиентов
-CREATE TABLE customers (
-    customer_id SERIAL PRIMARY KEY,
-    first_name VARCHAR(50) NOT NULL,
-    last_name VARCHAR(50) NOT NULL,
-    phone VARCHAR(20) UNIQUE NOT NULL,
-    email VARCHAR(100),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- 4. Таблица товаров (Основная)
+-- 3. Основная таблица товаров
 CREATE TABLE products (
     product_id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,            -- Название (напр. "Фильтр масляный")
-    part_number VARCHAR(50) NOT NULL,      -- Артикул (уникальный код запчасти)
-    price NUMERIC(10, 2) NOT NULL CHECK (price >= 0), -- Цена (используем NUMERIC для денег!)
-    stock_quantity INTEGER NOT NULL DEFAULT 0 CHECK (stock_quantity >= 0), -- Остаток на складе
+    part_number VARCHAR(50) NOT NULL,       -- Артикул (уникальный в рамках бренда, но разные бренды могут иметь одинаковые)
+    name VARCHAR(255) NOT NULL,             -- Название детали
+    
+    -- Адресное хранение: Зона-Ряд-Полка (например, "A-12-04")
+    location_code VARCHAR(20) DEFAULT 'RECEPTION', 
+    
+    -- Учетная цена (может быть средней закупочной)
+    price NUMERIC(10, 2) NOT NULL CHECK (price >= 0),
+    
+    -- Текущий остаток. Мы будем менять его автоматически, но защита от минуса обязательна
+    stock_quantity INTEGER NOT NULL DEFAULT 0 CHECK (stock_quantity >= 0),
+    
     category_id INTEGER REFERENCES categories(category_id) ON DELETE SET NULL,
     manufacturer_id INTEGER REFERENCES manufacturers(manufacturer_id) ON DELETE SET NULL,
+    
     description TEXT
 );
 
--- 5. Таблица заказов (Шапка заказа)
-CREATE TABLE orders (
-    order_id SERIAL PRIMARY KEY,
-    customer_id INTEGER REFERENCES customers(customer_id) ON DELETE CASCADE,
-    order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    status VARCHAR(20) DEFAULT 'new' CHECK (status IN ('new', 'paid', 'shipped', 'cancelled'))
+-- 4. Таблица Контрагентов (Поставщики и Клиенты)
+CREATE TABLE contractors (
+    contractor_id SERIAL PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,  -- Название фирмы или ИП
+    type VARCHAR(20) NOT NULL CHECK (type IN ('supplier', 'client')), -- Кто это?
+    phone VARCHAR(20),
+    email VARCHAR(100),
+    address TEXT
 );
 
--- 6. Таблица позиций заказа (Детализация: что конкретно купили)
-CREATE TABLE order_items (
+-- 5. Журнал складских операций (Шапка накладной)
+CREATE TABLE stock_movements (
+    movement_id SERIAL PRIMARY KEY,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Тип операции: 'in' (Приход на склад), 'out' (Расход/Отгрузка)
+    operation_type VARCHAR(10) NOT NULL CHECK (operation_type IN ('in', 'out')),
+    
+    contractor_id INTEGER REFERENCES contractors(contractor_id) ON DELETE SET NULL,
+    comments TEXT
+);
+
+-- 6. Состав накладной (Какие товары и сколько двигаем)
+CREATE TABLE movement_items (
     item_id SERIAL PRIMARY KEY,
-    order_id INTEGER REFERENCES orders(order_id) ON DELETE CASCADE,
+    movement_id INTEGER REFERENCES stock_movements(movement_id) ON DELETE CASCADE,
     product_id INTEGER REFERENCES products(product_id) ON DELETE RESTRICT,
-    quantity INTEGER NOT NULL CHECK (quantity > 0),
-    price_per_unit NUMERIC(10, 2) NOT NULL -- Цена на момент покупки!
+    
+    quantity INTEGER NOT NULL CHECK (quantity > 0), -- Только положительные числа
+    price NUMERIC(10, 2) NOT NULL -- Цена именно в этой накладной (может отличаться от базовой)
 );
 ```
 
 ---
 
-### 4. Подробное описание структуры (Что я сделал и почему)
+### 4. Автоматизация (Триггеры)
+*Это важная часть курсовой. Я не просто создал таблицы, я переложил логику на базу данных.*
 
-В ходе разработки структуры я принял несколько важных архитектурных решений, которые опишу ниже:
-
-#### А. Работа с деньгами (`NUMERIC` vs `FLOAT`)
-В таблице `products` для поля `price` я использовал тип данных `NUMERIC(10, 2)`. Я изучил, что использование `FLOAT` или `REAL` для хранения денег является грубой ошибкой из-за проблем с точностью плавающей запятой. `NUMERIC` гарантирует точное хранение копеек.
-
-#### Б. Ссылочная целостность (Foreign Keys)
-Я связал таблицы между собой с помощью внешних ключей (`REFERENCES`).
-*   **Что это дает:** Нельзя добавить товар, привязав его к несуществующей категории.
-*   **Каскадное удаление:** В таблице `orders` я использовал `ON DELETE CASCADE`. Это значит, если мы удалим клиента из базы, все его заказы удалятся автоматически, чтобы не оставлять «мусор». А вот в `products` я использовал `SET NULL`, чтобы при удалении категории товар остался, но без категории.
-
-#### В. Разделение Заказа и Позиций (`orders` и `order_items`)
-Это классический паттерн проектирования E-commerce систем, который я применил.
-*   Таблица `orders` хранит общую информацию: *«Иван Иванов сделал заказ №5 вчера»*.
-*   Таблица `order_items` хранит суть: *«В заказе №5 лежит 2 свечи зажигания и 1 канистра масла»*.
-Если бы я попытался запихнуть всё в одну таблицу, я бы не смог оформить заказ на несколько разных товаров сразу.
-
-#### Г. Фиксация исторической цены
-В таблице `order_items` есть поле `price_per_unit`.
-**Зачем оно нужно, если цена есть в `products`?**
-Это критически важный момент. Цены в магазине меняются. Если сегодня масло стоит 1000р, а завтра 1200р, то в старых заказах цена должна остаться 1000р (той, по которой клиент купил). Поэтому при создании заказа я копирую текущую цену из `products` в `order_items`.
-
-#### Д. Валидация данных (`CHECK`)
-Я добавил ограничения на уровне базы данных:
-*   `CHECK (price >= 0)`: Цена не может быть отрицательной.
-*   `CHECK (stock_quantity >= 0)`: Нельзя продать товара больше, чем есть на складе (уйти в минус).
-*   `status IN (...)`: Статус заказа может быть только из заранее определенного списка, чтобы исключить опечатки.
-
-### 5. Планы по интеграции с Python
-Данная структура полностью готова к написанию софта.
-1.  **ORM:** Можно описать эти таблицы как классы (модели) в Python.
-2.  **Логика:** При оформлении покупки скрипт на Python будет делать транзакцию:
-    *   Создавать запись в `orders`.
-    *   Добавлять записи в `order_items`.
-    *   Делать `UPDATE products SET stock_quantity = stock_quantity - N`, уменьшая остаток.
-
----
-
-### Пример заполнения (для проверки)
-
-Чтобы показать, что база работает, вот пару SQL-запросов для наполнения:
+**Проблема:** При оформлении накладной остаток товара в таблице `products` должен меняться сам. Если делать это через Python, можно допустить ошибку (рассинхрон).
+**Решение:** Я написал триггер на PL/pgSQL.
 
 ```sql
--- Добавляем справочники
-INSERT INTO categories (name) VALUES ('Масла'), ('Фильтры');
-INSERT INTO manufacturers (name, country) VALUES ('Shell', 'Нидерланды'), ('Mann', 'Германия');
+-- Функция, которая будет вызываться при добавлении строки в накладную
+CREATE OR REPLACE FUNCTION update_stock_on_movement()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Сначала узнаем тип операции (приход или расход) из шапки накладной
+    DECLARE
+        op_type VARCHAR(10);
+    BEGIN
+        SELECT operation_type INTO op_type 
+        FROM stock_movements 
+        WHERE movement_id = NEW.movement_id;
 
--- Добавляем товары
-INSERT INTO products (name, part_number, price, stock_quantity, category_id, manufacturer_id) 
-VALUES 
-('Масло Shell Helix 5W-40', '550021', 4500.00, 20, 1, 1),
-('Фильтр масляный', 'W914/2', 800.00, 50, 2, 2);
+        -- Если Приход ('in') -> Плюсуем товар
+        IF op_type = 'in' THEN
+            UPDATE products 
+            SET stock_quantity = stock_quantity + NEW.quantity
+            WHERE product_id = NEW.product_id;
+            
+        -- Если Расход ('out') -> Минусуем товар
+        ELSIF op_type = 'out' THEN
+            -- Проверка: хватает ли товара? (Хотя у нас есть CHECK, лучше проверить явно)
+            IF (SELECT stock_quantity FROM products WHERE product_id = NEW.product_id) < NEW.quantity THEN
+                RAISE EXCEPTION 'Ошибка: Недостаточно товара на складе для отгрузки!';
+            END IF;
 
--- Клиент делает заказ
-INSERT INTO customers (first_name, last_name, phone) VALUES ('Алексей', 'Петров', '+79990000000');
-INSERT INTO orders (customer_id) VALUES (1); -- Создался заказ id=1
+            UPDATE products 
+            SET stock_quantity = stock_quantity - NEW.quantity
+            WHERE product_id = NEW.product_id;
+        END IF;
+    END;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
--- Добавляем товары в заказ (Купил 1 канистру масла и 2 фильтра)
-INSERT INTO order_items (order_id, product_id, quantity, price_per_unit) VALUES
-(1, 1, 1, 4500.00),
-(1, 2, 2, 800.00);
+-- Сам триггер
+CREATE TRIGGER trg_update_stock
+AFTER INSERT ON movement_items
+FOR EACH ROW
+EXECUTE FUNCTION update_stock_on_movement();
 ```
 
-Отличное продолжение. Использование представлений (Views) — это признак грамотно спроектированной базы данных. Это позволяет скрыть сложную логику `JOIN`-ов и вычислений от будущего Python-приложения. Программе не нужно будет каждый раз считать сумму заказа, она просто «попросит» её у базы.
-
-Вот продолжение твоей пояснительной записки.
-
----
-
-### 6. Разработка представлений (Views)
-
-После создания структуры таблиц я столкнулся с тем, что «сырые» данные неудобны для восприятия. Например, таблица `products` содержит только `id` производителя, а не его название. Чтобы получить полную информацию, приходится писать длинные `JOIN`-запросы.
-
-Чтобы упростить работу с базой и перенести часть вычислений на сторону SQL-сервера, я разработал систему представлений (Views).
-
-#### SQL-код представлений
+### 5. Представления (Views) для удобства
+Чтобы в будущем в Python-программе не писать сложные запросы, я заранее подготовил "Витрины" данных.
 
 ```sql
--- 1. Представление полного каталога товаров (Человекочитаемый вид)
-CREATE OR REPLACE VIEW v_product_catalog AS
+-- 1. Представление текущих остатков с понятными названиями
+CREATE OR REPLACE VIEW v_warehouse_stock AS
 SELECT 
-    p.product_id,
-    p.part_number AS артикул,
-    p.name AS товар,
-    c.name AS категория,
-    m.name AS производитель,
-    p.price AS цена,
-    p.stock_quantity AS остаток,
-    CASE 
-        WHEN p.stock_quantity = 0 THEN 'Нет в наличии'
-        WHEN p.stock_quantity < 5 THEN 'Мало'
-        ELSE 'Много'
-    END AS статус_склада
+    p.part_number AS Артикул,
+    p.name AS Товар,
+    m.name AS Бренд,
+    p.location_code AS Ячейка,
+    p.stock_quantity AS Остаток,
+    p.price AS Учетная_Цена,
+    (p.stock_quantity * p.price) AS Сумма_Остатка -- Сколько денег заморожено в товаре
 FROM products p
-LEFT JOIN categories c ON p.category_id = c.category_id
 LEFT JOIN manufacturers m ON p.manufacturer_id = m.manufacturer_id;
 
--- 2. Представление состава заказов с подсчетом стоимости строк
--- Показывает, что именно лежит в заказе, подставляя названия вместо ID
-CREATE OR REPLACE VIEW v_order_details AS
+-- 2. Представление истории движения
+CREATE OR REPLACE VIEW v_movement_history AS
 SELECT 
-    oi.order_id,
-    p.name AS товар,
-    p.part_number,
-    oi.quantity AS кол_во,
-    oi.price_per_unit AS цена_за_шт,
-    (oi.quantity * oi.price_per_unit) AS сумма_строки
-FROM order_items oi
-JOIN products p ON oi.product_id = p.product_id;
-
--- 3. Представление итогов по заказам (Финансовый отчет)
--- Считает общую сумму чека
-CREATE OR REPLACE VIEW v_orders_summary AS
-SELECT 
-    o.order_id,
-    o.order_date AS дата,
-    o.status AS статус,
-    CONCAT(cust.first_name, ' ', cust.last_name) AS клиент,
-    cust.phone AS телефон,
-    COUNT(oi.item_id) AS позиций_в_чеке,
-    COALESCE(SUM(oi.quantity * oi.price_per_unit), 0) AS общая_сумма
-FROM orders o
-JOIN customers cust ON o.customer_id = cust.customer_id
-LEFT JOIN order_items oi ON o.order_id = oi.order_id
-GROUP BY o.order_id, cust.first_name, cust.last_name, cust.phone;
+    m.created_at AS Дата,
+    CASE 
+        WHEN m.operation_type = 'in' THEN 'Приход'
+        WHEN m.operation_type = 'out' THEN 'Расход' 
+    END AS Операция,
+    c.name AS Контрагент,
+    p.name AS Товар,
+    mi.quantity AS Кол_во,
+    mi.price AS Цена_операции
+FROM movement_items mi
+JOIN stock_movements m ON mi.movement_id = m.movement_id
+JOIN products p ON mi.product_id = p.product_id
+JOIN contractors c ON m.contractor_id = c.contractor_id
+ORDER BY m.created_at DESC;
 ```
 
 ---
 
-### 7. Описание реализованных представлений
+### 6. Пример работы (Тестирование)
+Я провел тестирование базы данных, выполнив следующие операции:
 
-Ниже я расписал, зачем создал каждое из представлений и какую проблему оно решает.
-
-#### А. `v_product_catalog` (Витрина)
-**Проблема:** В основной таблице товаров хранятся только числовые ID категории и производителя. Это неудобно для вывода на экран (пользователь не поймет, что такое `manufacturer_id = 5`).
-**Решение:**
-*   Я использовал `LEFT JOIN`, чтобы подтянуть текстовые названия категорий и брендов. Выбрал именно `LEFT JOIN`, чтобы товар отображался даже в том случае, если категория случайно была удалена (хотя внешние ключи нас от этого защищают, но так надежнее).
-*   **Логика статусов:** Я добавил конструкцию `CASE`, которая налету анализирует остатки. Менеджеру не обязательно смотреть на цифры, он сразу видит текстовый статус: «Нет в наличии», «Мало» или «Много». Это упрощает UI будущего приложения.
-
-#### Б. `v_order_details` (Детализация чека)
-**Проблема:** Таблица `order_items` хранит сухие цифры. Также там нет поля «Сумма», есть только «Цена» и «Количество».
-**Решение:**
-*   Я сделал вычисляемое поле `(quantity * price_per_unit)`. База данных сама перемножает количество на цену и выдает готовый итог по каждой позиции (Subtotal). Это снимает нагрузку с Python-скрипта и исключает ошибки округления на клиенте.
-
-#### В. `v_orders_summary` (Журнал заказов)
-**Проблема:** Таблица `orders` не знает, на какую сумму был сделан заказ, она хранит только «шапку». Чтобы узнать выручку, нужно перебрать все позиции и сложить их.
-**Решение:**
-*   Я применил агрегатную функцию `SUM()`, сгруппировав данные (`GROUP BY`) по номеру заказа.
-*   Функция `COUNT()` показывает, сколько разных наименований товаров купил клиент.
-*   Я использовал функцию `COALESCE(..., 0)`. Это важный нюанс: если заказ только создан, но в него еще не добавили товары, сумма будет `NULL`. `COALESCE` превращает `NULL` в красивый `0`.
-*   Функция `CONCAT` склеивает имя и фамилию клиента в одну удобную строку.
-
-### 8. Как это использовать (Примеры запросов)
-
-Теперь, вместо сложных запросов на 10 строк, в будущем приложении я смогу писать простые команды:
-
-**1. Показать все товары, которых мало на складе:**
 ```sql
-SELECT * FROM v_product_catalog WHERE статус_склада = 'Мало';
+-- 1. Заполним справочники
+INSERT INTO categories (name) VALUES ('Масла'), ('Ходовая');
+INSERT INTO manufacturers (name) VALUES ('Shell'), ('Kayaba');
+INSERT INTO contractors (name, type) VALUES ('ООО Поставщик-1', 'supplier'), ('ИП Клиент-Авто', 'client');
+
+-- 2. Создадим карточку товара (Изначально остаток 0)
+INSERT INTO products (part_number, name, location_code, price, category_id, manufacturer_id)
+VALUES ('5W40-4L', 'Масло Shell Helix Ultra 4л', 'Z-01-05', 4000.00, 1, 1);
+
+-- 3. Оформляем ПРИХОД (Покупаем у поставщика 10 канистр)
+INSERT INTO stock_movements (operation_type, contractor_id) VALUES ('in', 1); -- id=1
+INSERT INTO movement_items (movement_id, product_id, quantity, price) VALUES (1, 1, 10, 3800.00);
+
+-- В этот момент сработал триггер! Остаток товара стал 10.
+
+-- 4. Оформляем РАСХОД (Продаем клиенту 2 канистры)
+INSERT INTO stock_movements (operation_type, contractor_id) VALUES ('out', 2); -- id=2
+INSERT INTO movement_items (movement_id, product_id, quantity, price) VALUES (2, 1, 2, 4500.00);
+
+-- Триггер снова сработал. Остаток стал 8.
 ```
 
-**2. Узнать выручку за сегодня:**
-```sql
-SELECT SUM(общая_сумма) FROM v_orders_summary WHERE дата >= CURRENT_DATE;
-```
 
-**3. Показать чек для конкретного заказа №1:**
-```sql
-SELECT * FROM v_order_details WHERE order_id = 1;
-```
-
-### Вывод по разделу
-Создание представлений позволило мне абстрагироваться от физической структуры таблиц. Теперь база данных предоставляет удобный интерфейс («API») для работы с данными, что значительно ускорит разработку программной части на Python.
+Данная архитектура является масштабируемой и позволяет в будущем добавить, например, инвентаризацию или резервирование товара.
