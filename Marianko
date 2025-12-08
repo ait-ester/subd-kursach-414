@@ -1,0 +1,527 @@
+-- =============================================
+-- БАЗА ДАННЫХ ТУРИСТИЧЕСКОГО АГЕНТСТВА "ВОКРУГ СВЕТА"
+-- Версия 1.0
+-- =============================================
+
+-- Создание схемы
+CREATE SCHEMA IF NOT EXISTS travel_agency;
+SET search_path TO travel_agency;
+
+-- =============================================
+-- ТИПЫ ДАННЫХ
+-- =============================================
+
+-- Тип для статуса бронирования
+CREATE TYPE booking_status AS ENUM (
+    'pending',      -- ожидает подтверждения
+    'confirmed',    -- подтверждено
+    'paid',         -- оплачено
+    'cancelled',    -- отменено
+    'completed'     -- завершено
+);
+
+-- Тип для статуса платежа
+CREATE TYPE payment_status AS ENUM (
+    'pending',
+    'completed',
+    'failed',
+    'refunded'
+);
+
+-- Тип для типа тура
+CREATE TYPE tour_type AS ENUM (
+    'beach',        -- пляжный
+    'excursion',    -- экскурсионный
+    'ski',          -- горнолыжный
+    'cruise',       -- круиз
+    'shopping',     -- шопинг
+    'health',       -- оздоровительный
+    'adventure'     -- приключенческий
+);
+
+-- Тип для категории отеля
+CREATE TYPE hotel_category AS ENUM (
+    '1_star',
+    '2_stars',
+    '3_stars',
+    '4_stars',
+    '5_stars',
+    'apartment',
+    'hostel',
+    'guest_house'
+);
+
+-- =============================================
+-- СПРАВОЧНИКИ (REFERENCE TABLES)
+-- =============================================
+
+-- Страны
+CREATE TABLE countries (
+    country_id SERIAL PRIMARY KEY,
+    country_code CHAR(2) UNIQUE NOT NULL,
+    country_name VARCHAR(100) UNIQUE NOT NULL,
+    visa_required BOOLEAN DEFAULT FALSE,
+    time_zone VARCHAR(50),
+    currency_code CHAR(3) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE countries IS 'Справочник стран';
+COMMENT ON COLUMN countries.visa_required IS 'Требуется ли виза для граждан РФ';
+
+-- Города
+CREATE TABLE cities (
+    city_id SERIAL PRIMARY KEY,
+    country_id INTEGER NOT NULL REFERENCES countries(country_id) ON DELETE RESTRICT,
+    city_name VARCHAR(100) NOT NULL,
+    is_popular BOOLEAN DEFAULT FALSE,
+    description TEXT,
+    climate_info VARCHAR(255),
+    UNIQUE(country_id, city_name)
+);
+
+CREATE INDEX idx_cities_country ON cities(country_id);
+
+-- Авиакомпании
+CREATE TABLE airlines (
+    airline_id SERIAL PRIMARY KEY,
+    iata_code CHAR(2) UNIQUE NOT NULL,
+    airline_name VARCHAR(100) NOT NULL,
+    country_id INTEGER REFERENCES countries(country_id) ON DELETE SET NULL,
+    alliance VARCHAR(50),
+    is_active BOOLEAN DEFAULT TRUE,
+    baggage_rules TEXT
+);
+
+-- Туроператоры
+CREATE TABLE tour_operators (
+    operator_id SERIAL PRIMARY KEY,
+    operator_name VARCHAR(100) UNIQUE NOT NULL,
+    license_number VARCHAR(50) UNIQUE,
+    contact_phone VARCHAR(20) NOT NULL,
+    contact_email VARCHAR(100),
+    legal_address TEXT,
+    rating DECIMAL(3,2) CHECK (rating >= 0 AND rating <= 5),
+    is_reliable BOOLEAN DEFAULT TRUE,
+    contract_start_date DATE NOT NULL,
+    contract_end_date DATE,
+    commission_rate DECIMAL(5,2) DEFAULT 10.00 CHECK (commission_rate >= 0 AND commission_rate <= 30),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Отели
+CREATE TABLE hotels (
+    hotel_id SERIAL PRIMARY KEY,
+    hotel_name VARCHAR(200) NOT NULL,
+    city_id INTEGER NOT NULL REFERENCES cities(city_id) ON DELETE RESTRICT,
+    address TEXT,
+    category hotel_category NOT NULL,
+    stars INTEGER CHECK (stars >= 1 AND stars <= 5),
+    website VARCHAR(255),
+    contact_phone VARCHAR(20),
+    contact_email VARCHAR(100),
+    description TEXT,
+    facilities JSONB, -- spa, pool, wifi, parking, etc.
+    rating DECIMAL(3,2) CHECK (rating >= 0 AND rating <= 5),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_hotels_city ON hotels(city_id);
+CREATE INDEX idx_hotels_category ON hotels(category);
+
+-- =============================================
+-- ОСНОВНЫЕ ТАБЛИЦЫ (CORE TABLES)
+-- =============================================
+
+-- Клиенты
+CREATE TABLE clients (
+    client_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    middle_name VARCHAR(50),
+    passport_series VARCHAR(4) NOT NULL,
+    passport_number VARCHAR(6) NOT NULL,
+    passport_issued_by TEXT,
+    passport_issue_date DATE,
+    passport_expiry_date DATE,
+    birth_date DATE NOT NULL,
+    phone VARCHAR(20) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    registration_address TEXT,
+    is_vip BOOLEAN DEFAULT FALSE,
+    discount_rate DECIMAL(5,2) DEFAULT 0 CHECK (discount_rate >= 0 AND discount_rate <= 30),
+    total_bookings INTEGER DEFAULT 0,
+    total_spent DECIMAL(12,2) DEFAULT 0,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(passport_series, passport_number)
+);
+
+CREATE INDEX idx_clients_phone ON clients(phone);
+CREATE INDEX idx_clients_email ON clients(email);
+CREATE INDEX idx_clients_vip ON clients(is_vip) WHERE is_vip = TRUE;
+
+-- Сотрудники
+CREATE TABLE employees (
+    employee_id SERIAL PRIMARY KEY,
+    user_id VARCHAR(50) UNIQUE NOT NULL, -- для входа в систему
+    password_hash VARCHAR(255) NOT NULL,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    position VARCHAR(100) NOT NULL,
+    department VARCHAR(100),
+    email VARCHAR(100) UNIQUE NOT NULL,
+    phone VARCHAR(20),
+    hire_date DATE NOT NULL,
+    salary DECIMAL(10,2),
+    is_active BOOLEAN DEFAULT TRUE,
+    permissions JSONB, -- права доступа
+    last_login TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Туры
+CREATE TABLE tours (
+    tour_id SERIAL PRIMARY KEY,
+    tour_code VARCHAR(20) UNIQUE NOT NULL,
+    tour_name VARCHAR(200) NOT NULL,
+    operator_id INTEGER NOT NULL REFERENCES tour_operators(operator_id) ON DELETE RESTRICT,
+    hotel_id INTEGER NOT NULL REFERENCES hotels(hotel_id) ON DELETE RESTRICT,
+    departure_city_id INTEGER NOT NULL REFERENCES cities(city_id) ON DELETE RESTRICT,
+    destination_city_id INTEGER NOT NULL REFERENCES cities(city_id) ON DELETE RESTRICT,
+    airline_id INTEGER REFERENCES airlines(airline_id) ON DELETE SET NULL,
+    tour_type tour_type NOT NULL,
+    description TEXT,
+    duration_days INTEGER NOT NULL CHECK (duration_days > 0),
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    base_price DECIMAL(10,2) NOT NULL CHECK (base_price > 0),
+    commission DECIMAL(10,2) DEFAULT 0,
+    final_price DECIMAL(10,2) GENERATED ALWAYS AS (base_price + commission) STORED,
+    available_seats INTEGER NOT NULL CHECK (available_seats >= 0),
+    min_seats INTEGER DEFAULT 1,
+    max_seats_per_booking INTEGER DEFAULT 4,
+    is_hot BOOLEAN DEFAULT FALSE,
+    is_early_booking BOOLEAN DEFAULT FALSE,
+    early_booking_discount DECIMAL(5,2) DEFAULT 0,
+    included_services TEXT[],
+    requirements TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT check_dates CHECK (end_date > start_date)
+);
+
+CREATE INDEX idx_tours_operator ON tours(operator_id);
+CREATE INDEX idx_tours_hotel ON tours(hotel_id);
+CREATE INDEX idx_tours_dates ON tours(start_date, end_date);
+CREATE INDEX idx_tours_type ON tours(tour_type);
+CREATE INDEX idx_tours_hot ON tours(is_hot) WHERE is_hot = TRUE;
+CREATE INDEX idx_tours_price ON tours(final_price);
+
+-- Бронирования (основная таблица событий)
+CREATE TABLE bookings (
+    booking_id SERIAL PRIMARY KEY,
+    booking_number VARCHAR(20) UNIQUE NOT NULL,
+    client_id INTEGER NOT NULL REFERENCES clients(client_id) ON DELETE RESTRICT,
+    manager_id INTEGER NOT NULL REFERENCES employees(employee_id) ON DELETE RESTRICT,
+    tour_id INTEGER NOT NULL REFERENCES tours(tour_id) ON DELETE RESTRICT,
+    booking_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    departure_date DATE NOT NULL,
+    return_date DATE NOT NULL,
+    number_of_travelers INTEGER NOT NULL CHECK (number_of_travelers > 0),
+    traveler_names TEXT[], -- имена всех путешественников
+    special_requests TEXT,
+    status booking_status DEFAULT 'pending',
+    total_amount DECIMAL(12,2) NOT NULL CHECK (total_amount > 0),
+    paid_amount DECIMAL(12,2) DEFAULT 0 CHECK (paid_amount >= 0),
+    discount_applied DECIMAL(10,2) DEFAULT 0,
+    commission_amount DECIMAL(10,2) GENERATED ALWAYS AS (total_amount * 0.10) STORED, -- 10% комиссия агентства
+    notes TEXT,
+    cancellation_reason TEXT,
+    cancelled_at TIMESTAMP WITH TIME ZONE,
+    completed_at TIMESTAMP WITH TIME ZONE,
+    CONSTRAINT check_paid_amount CHECK (paid_amount <= total_amount),
+    CONSTRAINT check_return_date CHECK (return_date > departure_date)
+);
+
+CREATE INDEX idx_bookings_client ON bookings(client_id);
+CREATE INDEX idx_bookings_manager ON bookings(manager_id);
+CREATE INDEX idx_bookings_tour ON bookings(tour_id);
+CREATE INDEX idx_bookings_status ON bookings(status);
+CREATE INDEX idx_bookings_dates ON bookings(departure_date, return_date);
+CREATE INDEX idx_bookings_booking_date ON bookings(booking_date);
+
+-- Платежи
+CREATE TABLE payments (
+    payment_id SERIAL PRIMARY KEY,
+    booking_id INTEGER NOT NULL REFERENCES bookings(booking_id) ON DELETE CASCADE,
+    payment_number VARCHAR(20) UNIQUE NOT NULL,
+    payment_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    amount DECIMAL(10,2) NOT NULL CHECK (amount > 0),
+    payment_method VARCHAR(50) NOT NULL, -- cash, card, transfer, etc.
+    currency VARCHAR(3) DEFAULT 'RUB',
+    status payment_status DEFAULT 'pending',
+    transaction_id VARCHAR(100),
+    receipt_url TEXT,
+    processed_by INTEGER REFERENCES employees(employee_id),
+    notes TEXT,
+    refunded_amount DECIMAL(10,2) DEFAULT 0,
+    refund_date TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX idx_payments_booking ON payments(booking_id);
+CREATE INDEX idx_payments_date ON payments(payment_date);
+CREATE INDEX idx_payments_status ON payments(status);
+CREATE INDEX idx_payments_method ON payments(payment_method);
+
+-- Договоры
+CREATE TABLE contracts (
+    contract_id SERIAL PRIMARY KEY,
+    booking_id INTEGER UNIQUE NOT NULL REFERENCES bookings(booking_id) ON DELETE CASCADE,
+    contract_number VARCHAR(50) UNIQUE NOT NULL,
+    contract_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    signed_by_client BOOLEAN DEFAULT FALSE,
+    signed_by_manager BOOLEAN DEFAULT FALSE,
+    client_signature_date DATE,
+    manager_signature_date DATE,
+    pdf_path TEXT, -- путь к файлу договора
+    terms_and_conditions TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_contracts_booking ON contracts(booking_id);
+
+-- Отзывы
+CREATE TABLE reviews (
+    review_id SERIAL PRIMARY KEY,
+    client_id INTEGER NOT NULL REFERENCES clients(client_id) ON DELETE CASCADE,
+    tour_id INTEGER NOT NULL REFERENCES tours(tour_id) ON DELETE CASCADE,
+    booking_id INTEGER REFERENCES bookings(booking_id) ON DELETE SET NULL,
+    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    title VARCHAR(200),
+    comment TEXT,
+    pros TEXT,
+    cons TEXT,
+    review_date DATE DEFAULT CURRENT_DATE,
+    is_verified BOOLEAN DEFAULT FALSE, -- подтвержденная покупка
+    is_published BOOLEAN DEFAULT TRUE,
+    manager_response TEXT,
+    response_date DATE,
+    UNIQUE(client_id, tour_id) -- один отзыв на тур от клиента
+);
+
+CREATE INDEX idx_reviews_tour ON reviews(tour_id);
+CREATE INDEX idx_reviews_rating ON reviews(rating);
+CREATE INDEX idx_reviews_verified ON reviews(is_verified) WHERE is_verified = TRUE;
+
+-- Документы клиентов
+CREATE TABLE client_documents (
+    document_id SERIAL PRIMARY KEY,
+    client_id INTEGER NOT NULL REFERENCES clients(client_id) ON DELETE CASCADE,
+    booking_id INTEGER REFERENCES bookings(booking_id) ON DELETE CASCADE,
+    document_type VARCHAR(50) NOT NULL, -- passport, visa, insurance, etc.
+    document_number VARCHAR(100),
+    issue_date DATE,
+    expiry_date DATE,
+    issuing_authority TEXT,
+    file_path TEXT, -- путь к скану документа
+    is_verified BOOLEAN DEFAULT FALSE,
+    verified_by INTEGER REFERENCES employees(employee_id),
+    verification_date DATE,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_documents_client ON client_documents(client_id);
+CREATE INDEX idx_documents_booking ON client_documents(booking_id);
+
+-- Логи изменений (аудиторская таблица)
+CREATE TABLE audit_log (
+    log_id SERIAL PRIMARY KEY,
+    table_name VARCHAR(50) NOT NULL,
+    record_id INTEGER NOT NULL,
+    action VARCHAR(10) NOT NULL, -- INSERT, UPDATE, DELETE
+    old_values JSONB,
+    new_values JSONB,
+    changed_by INTEGER REFERENCES employees(employee_id),
+    changed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    ip_address INET,
+    user_agent TEXT
+);
+
+CREATE INDEX idx_audit_table_record ON audit_log(table_name, record_id);
+CREATE INDEX idx_audit_date ON audit_log(changed_at);
+CREATE INDEX idx_audit_user ON audit_log(changed_by);
+
+-- =============================================
+-- ТАБЛИЦЫ СВЯЗЕЙ (RELATIONSHIP TABLES)
+-- =============================================
+
+-- Дополнительные услуги в туре
+CREATE TABLE tour_services (
+    service_id SERIAL PRIMARY KEY,
+    service_name VARCHAR(100) NOT NULL,
+    description TEXT,
+    standard_price DECIMAL(8,2) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+-- Связь туров с дополнительными услугами
+CREATE TABLE tour_service_link (
+    tour_id INTEGER NOT NULL REFERENCES tours(tour_id) ON DELETE CASCADE,
+    service_id INTEGER NOT NULL REFERENCES tour_services(service_id) ON DELETE CASCADE,
+    actual_price DECIMAL(8,2) NOT NULL,
+    included_in_price BOOLEAN DEFAULT FALSE,
+    PRIMARY KEY (tour_id, service_id)
+);
+
+-- Выбранные услуги в бронировании
+CREATE TABLE booking_services (
+    booking_id INTEGER NOT NULL REFERENCES bookings(booking_id) ON DELETE CASCADE,
+    service_id INTEGER NOT NULL REFERENCES tour_services(service_id) ON DELETE RESTRICT,
+    quantity INTEGER DEFAULT 1 CHECK (quantity > 0),
+    unit_price DECIMAL(8,2) NOT NULL,
+    total_price DECIMAL(10,2) GENERATED ALWAYS AS (quantity * unit_price) STORED,
+    PRIMARY KEY (booking_id, service_id)
+);
+
+-- =============================================
+-- ФУНКЦИИ И ТРИГГЕРЫ
+-- =============================================
+
+-- Функция для автоматического обновления updated_at
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Триггеры для обновления updated_at
+CREATE TRIGGER update_clients_updated_at 
+    BEFORE UPDATE ON clients 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_tours_updated_at 
+    BEFORE UPDATE ON tours 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_hotels_updated_at 
+    BEFORE UPDATE ON hotels 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Триггер для аудита изменений в бронированиях
+CREATE OR REPLACE FUNCTION log_booking_changes()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        INSERT INTO audit_log (table_name, record_id, action, new_values)
+        VALUES ('bookings', NEW.booking_id, 'INSERT', row_to_json(NEW));
+    ELSIF TG_OP = 'UPDATE' THEN
+        INSERT INTO audit_log (table_name, record_id, action, old_values, new_values)
+        VALUES ('bookings', NEW.booking_id, 'UPDATE', row_to_json(OLD), row_to_json(NEW));
+    ELSIF TG_OP = 'DELETE' THEN
+        INSERT INTO audit_log (table_name, record_id, action, old_values)
+        VALUES ('bookings', OLD.booking_id, 'DELETE', row_to_json(OLD));
+    END IF;
+    RETURN NULL;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER bookings_audit_trigger
+    AFTER INSERT OR UPDATE OR DELETE ON bookings
+    FOR EACH ROW EXECUTE FUNCTION log_booking_changes();
+
+-- Функция для проверки доступности мест
+CREATE OR REPLACE FUNCTION check_seat_availability()
+RETURNS TRIGGER AS $$
+DECLARE
+    available_seats INTEGER;
+    booked_seats INTEGER;
+BEGIN
+    -- Получаем количество доступных мест
+    SELECT available_seats INTO available_seats 
+    FROM tours WHERE tour_id = NEW.tour_id;
+    
+    -- Получаем количество уже забронированных мест на этот тур
+    SELECT COALESCE(SUM(number_of_travelers), 0) INTO booked_seats
+    FROM bookings 
+    WHERE tour_id = NEW.tour_id 
+    AND status IN ('confirmed', 'paid', 'completed');
+    
+    IF (booked_seats + NEW.number_of_travelers) > available_seats THEN
+        RAISE EXCEPTION 'Недостаточно свободных мест. Доступно: %, Запрошено: %', 
+            (available_seats - booked_seats), NEW.number_of_travelers;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER check_seats_before_booking
+    BEFORE INSERT OR UPDATE ON bookings
+    FOR EACH ROW EXECUTE FUNCTION check_seat_availability();
+
+-- Функция для обновления статистики клиента
+CREATE OR REPLACE FUNCTION update_client_stats()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'INSERT' AND NEW.status = 'completed' THEN
+        UPDATE clients 
+        SET total_bookings = total_bookings + 1,
+            total_spent = total_spent + NEW.total_amount,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE client_id = NEW.client_id;
+        
+        -- Если клиент совершил более 5 покупок, делаем его VIP
+        UPDATE clients 
+        SET is_vip = TRUE,
+            discount_rate = 5.00
+        WHERE client_id = NEW.client_id 
+        AND total_bookings >= 5 
+        AND is_vip = FALSE;
+        
+    ELSIF TG_OP = 'UPDATE' AND NEW.status = 'completed' AND OLD.status != 'completed' THEN
+        UPDATE clients 
+        SET total_bookings = total_bookings + 1,
+            total_spent = total_spent + NEW.total_amount,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE client_id = NEW.client_id;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_client_stats_trigger
+    AFTER INSERT OR UPDATE ON bookings
+    FOR EACH ROW EXECUTE FUNCTION update_client_stats();
+
+-- Функция для генерации номера бронирования
+CREATE OR REPLACE FUNCTION generate_booking_number()
+RETURNS TRIGGER AS $$
+DECLARE
+    year_text VARCHAR(4);
+    sequence_num INTEGER;
+BEGIN
+    year_text := EXTRACT(YEAR FROM CURRENT_DATE)::VARCHAR;
+    
+    SELECT COALESCE(MAX(SUBSTRING(booking_number FROM 8)::INTEGER), 0) + 1 
+    INTO sequence_num
+    FROM bookings 
+    WHERE booking_number LIKE 'BK-' || year_text || '-%';
+    
+    NEW.booking_number := 'BK-' || year_text || '-' || LPAD(sequence_num::TEXT, 6, '0');
+    
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER generate_booking_number_trigger
+    BEFORE INSERT ON bookings
+    FOR EACH ROW EXECUTE FUNCTION generate_booking_number();
