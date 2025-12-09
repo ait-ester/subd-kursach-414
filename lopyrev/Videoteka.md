@@ -110,3 +110,5 @@ FROM viewings v
 JOIN movies m ON v.movie_id = m.id
 ORDER BY v.viewing_date DESC;
 
+09.12.25
+Дописал приложение на python с ui для взаимодействия с базой данных
