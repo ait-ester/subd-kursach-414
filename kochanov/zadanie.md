@@ -182,19 +182,17 @@
 ### **2.4. Построение концептуальной модели**
 
 [Пользователь] 1---0..1 [Сотрудник]
-| |
-| 1---0..1 |
-| |
-[Гость] 1---0..N [Бронирование] 1---1..N [Платеж]
-| | 1
-| |
+      |                     |
+      | 1---0..1            |
+      |                     |
+    [Гость] 1---0..N [Бронирование] 1---1..N [Платеж]
+      |                     | 1
+      |                     | 
 [Черный список] 0..1---1 [Объект] 1---0..N [Уборка]
-|
-| 1---0..N [Инвентарь]
-|
-[Отзыв] 0..1---1 [Бронирование]
-text
-
+                             |
+                             | 1---0..N [Инвентарь]
+                             |
+                          [Отзыв] 0..1---1 [Бронирование]
 
 ---
 
@@ -232,9 +230,9 @@ booking_service (booking_service_id PK, booking_id FK, service_id FK)
 inventory_item (item_id PK, property_id FK, category_id FK)
 inventory_check (check_id PK, booking_id FK)
 
-4. Физическая структура базы данных
+## **4. Физическая структура базы данных**
 
-Характеристики БД:
+**Характеристики БД:**
 
     Кодировка: UTF-8
 
@@ -244,7 +242,7 @@ inventory_check (check_id PK, booking_id FK)
 
     Количество таблиц: 25
 
-Типы данных:
+**Типы данных:**
 
     Числовые: SERIAL (автоинкремент), INTEGER, DECIMAL(10,2)
 
@@ -256,7 +254,7 @@ inventory_check (check_id PK, booking_id FK)
 
     Специальные: JSONB, INET (IP-адреса)
 
-Ограничения целостности:
+**Ограничения целостности:**
 
     Первичные ключи (PRIMARY KEY)
 
@@ -266,12 +264,12 @@ inventory_check (check_id PK, booking_id FK)
 
     Уникальные ограничения (UNIQUE)
 
-5. Реализация проекта в среде конкретной СУБД
-5.1. Создание таблиц
+## **5. Реализация проекта в среде конкретной СУБД**
+### **5.1. Создание таблиц**
 
-Полный скрипт создания таблиц представлен в папке kochanov/kochanov.md. Создано 27 таблиц с полным набором ограничений целостности.
+**Полный скрипт создания таблиц представлен в папке kochanov/kochanov.md. Создано 27 таблиц с полным набором ограничений целостности.**
 
-Особенности реализации:
+**Особенности реализации:**
 
     Использование SERIAL для автоинкремента
 
@@ -281,11 +279,11 @@ inventory_check (check_id PK, booking_id FK)
 
     Проверочные ограничения для статусов
 
-5.2. Создание запросов
+### **5.2. Создание запросов**
 
-Типовые запросы системы:
+**Типовые запросы системы:**
 
-    Поиск доступных объектов на даты:
+    **Поиск доступных объектов на даты:**
     sql
 
 SELECT p.*, pt.type_name, pc.category_name
@@ -304,7 +302,7 @@ AND p.city = 'Москва'
 AND p.max_guests >= 2
 ORDER BY p.rating DESC;
 
-Отчёт по загрузке объектов:
+**Отчёт по загрузке объектов:**
 sql
 
 SELECT 
@@ -323,7 +321,7 @@ WHERE p.is_active = TRUE
 GROUP BY p.property_id, p.title, p.city
 ORDER BY total_revenue DESC;
 
-Финансовый отчёт за период:
+**Финансовый отчёт за период:**
 sql
 
 SELECT 
@@ -338,9 +336,9 @@ WHERE p.payment_status = 'completed'
 GROUP BY DATE_TRUNC('month', p.created_at)
 ORDER BY month DESC;
 
-5.3. Разработка интерфейса
+### **5.3. Разработка интерфейса**
 
-Архитектура веб-приложения:
+**Архитектура веб-приложения:**
 
     Frontend: HTML5, CSS3, Bootstrap 5, JavaScript
 
@@ -350,7 +348,7 @@ ORDER BY month DESC;
 
     СУБД: PostgreSQL 14+
 
-Структура веб-приложения:
+**Структура веб-приложения:**
 text
 
 /var/www/html/rental_simple/
@@ -364,9 +362,9 @@ text
 ├── functions.php      # Общие функции
 ├── navbar.php         # Навигационная панель
 ├── style.css          # Стили
-└── admin.php          # Админ-панель
 
-Основные возможности интерфейса:
+
+**Основные возможности интерфейса:**
 
     Аутентификация и авторизация
 
@@ -380,11 +378,11 @@ text
 
     Ролевой доступ (гость, сотрудник, администратор)
 
-5.4. Назначение прав доступа
+### **5.4. Назначение прав доступа**
 
-Роли пользователей:
+**Роли пользователей:**
 
-    Гость (guest):
+    **Гость (guest):**
 
         Просмотр доступных объектов
 
@@ -394,7 +392,7 @@ text
 
         Оставление отзывов
 
-    Сотрудник (employee):
+    **Сотрудник (employee):**
 
         Все права гостей
 
@@ -406,7 +404,7 @@ text
 
         Работа с отзывами (модерация)
 
-    Уборщик (cleaner):
+    **Уборщик (cleaner):**
 
         Просмотр задач по уборке
 
@@ -414,7 +412,7 @@ text
 
         Просмотр информации об объектах
 
-    Администратор (admin):
+    **Администратор (admin):**
 
         Полный доступ ко всем данным
 
@@ -426,7 +424,7 @@ text
 
         Доступ к админ-панели
 
-SQL для создания ролей:
+**SQL для создания ролей:**
 sql
 
 -- Создание ролей в PostgreSQL
@@ -442,9 +440,9 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO rental_employee;
 GRANT INSERT, UPDATE, DELETE ON booking, payment, cleaning_task TO rental_employee;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO rental_admin;
 
-5.5. Создание индексов
+### **5.5. Создание индексов**
 
-Критически важные индексы:
+**Критически важные индексы:**
 sql
 
 -- Для быстрого поиска пользователей
@@ -484,7 +482,7 @@ CREATE INDEX idx_property_search ON property USING gin(
     )
 );
 
-Составные индексы для оптимизации частых запросов:
+**Составные индексы для оптимизации частых запросов:**
 sql
 
 -- Для календаря цен
@@ -496,9 +494,9 @@ CREATE INDEX idx_review_property ON review(property_id, is_approved, created_at 
 -- Для статистических запросов
 CREATE INDEX idx_booking_financial ON booking(created_at, status, total_price);
 
-5.6. Разработка стратегии резервного копирования базы данных
+### **5.6. Разработка стратегии резервного копирования базы данных**
 
-Ежедневные инкрементальные бэкапы:
+**Ежедневные инкрементальные бэкапы:**
 bash
 
 #!/bin/bash
@@ -508,7 +506,7 @@ BACKUP_DIR="/backup/postgres/daily"
 PGPASSWORD="yourpassword" pg_dump -h localhost -U postgres -d kursovaya -Fc -f $BACKUP_DIR/kursovaya_$DATE.dump
 find $BACKUP_DIR -name "*.dump" -mtime +7 -delete
 
-Еженедельные полные бэкапы:
+**Еженедельные полные бэкапы:**
 bash
 
 #!/bin/bash
@@ -518,7 +516,7 @@ BACKUP_DIR="/backup/postgres/weekly"
 PGPASSWORD="yourpassword" pg_dump -h localhost -U postgres -d kursovaya -Fc -f $BACKUP_DIR/kursovaya_full_$DATE.dump
 find $BACKUP_DIR -name "*.dump" -mtime +30 -delete
 
-Репликация:
+**Репликация:**
 sql
 
 -- Настройка мастер-слейв репликации
@@ -530,19 +528,19 @@ ALTER SYSTEM SET wal_keep_size = 1024;
 -- На слейве:
 pg_basebackup -h master_host -D /var/lib/postgresql/14/main -U replicator -P -v -R
 
-План восстановления:
+**План восстановления:**
 
-    Критическая потеря данных (до 1 часа):
+    **Критическая потеря данных (до 1 часа):**
     bash
 
 pg_restore -h localhost -U postgres -d kursovaya -c /backup/postgres/daily/latest.dump
 
-Аварийное восстановление (до 24 часов):
+**Аварийное восстановление (до 24 часов):**
 bash
 
 pg_restore -h standby_server -U postgres -d kursovaya -c /backup/postgres/weekly/latest.dump
 
-Мониторинг бэкапов:
+**Мониторинг бэкапов:**
 sql
 
 -- Проверка последнего бэкапа
@@ -554,7 +552,7 @@ FROM pg_tables
 WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
 ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
 
-Заключение
+## **Заключение**
 
 В ходе курсовой работы была разработана полноценная информационная система управления арендой квартир, включающая:
 
