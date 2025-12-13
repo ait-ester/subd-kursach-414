@@ -96,7 +96,7 @@
 
 ## <a id="content">Содержание</a>
 
-1. [Введение] (#introduction)
+1. [Введение](#introduction)
     - [Актуальность темы.] (#)
     - [Цель работы.] (#)
     - [Задачи работы.] (#)
@@ -116,7 +116,7 @@
 
 
 
-## <p align="center"><a id="introduction"> Введение </a>
+## <a id="introduction"> <p align="center"> Введение </a>
 
 ### <a id=""> Актуальность темы 
 
