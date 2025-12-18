@@ -729,16 +729,10 @@ PostgreSQL.
 <h3 id="51-создание-таблиц">5.1. Создание таблиц</h3>
 
 <p>
-Реализация базы данных для системы учёта домашних финансов выполнена в среде
-системы управления базами данных PostgreSQL. На данном этапе производится
-создание таблиц базы данных в соответствии с разработанной логической и
-физической структурами.
-</p>
-
-<p>
-Каждая таблица создаётся с использованием оператора CREATE TABLE и содержит
-набор полей, соответствующих атрибутам информационных объектов, выделенных на
-этапе инфологического проектирования.
+Реализация базы данных для системы учёта домашних финансов выполнена
+в среде системы управления базами данных PostgreSQL.
+Создание таблиц осуществлялось на основе разработанной логической и физической
+структуры базы данных.
 </p>
 
 <p>
@@ -746,212 +740,123 @@ PostgreSQL.
 </p>
 
 <ul>
-  <li>таблица пользователей системы;</li>
-  <li>таблица финансовых счетов;</li>
-  <li>таблица категорий доходов и расходов;</li>
-  <li>таблица контрагентов;</li>
-  <li>таблица финансовых транзакций;</li>
+    <li><b>users</b> — хранение данных пользователей системы;</li>
+    <li><b>accounts</b> — хранение информации о финансовых счетах пользователей;</li>
+    <li><b>categories</b> — справочник категорий доходов и расходов;</li>
+    <li><b>payees</b> — хранение информации о контрагентах;</li>
+    <li><b>operations</b> — хранение финансовых операций пользователей.</li>
 </ul>
 
 <p>
-«Внешние ключи настроены с учётом ограничений
-ссылочной целостности, предотвращающих удаление связанных записей».
+Каждая таблица содержит первичный ключ, обеспечивающий уникальность записей.
+Связи между таблицами реализованы с использованием внешних ключей, что
+обеспечивает ссылочную целостность данных.
 </p>
 
 <p>
-Связи между таблицами реализованы с помощью внешних ключей, которые обеспечивают
-ссылочную целостность данных. Использование внешних ключей позволяет предотвратить
-удаление или изменение записей, на которые существуют ссылки в других таблицах.
+Для обеспечения корректности данных при создании таблиц использованы
+ограничения <code>NOT NULL</code>, <code>UNIQUE</code> и <code>CHECK</code>.
 </p>
 
-<p>
-При создании таблиц используются ограничения целостности данных, включая:
-</p>
-
-<ul>
-  <li>ограничения NOT NULL для обязательных полей;</li>
-  <li>ограничения UNIQUE для уникальных значений;</li>
-  <li>ограничения CHECK для контроля допустимых значений;</li>
-  <li>ограничения внешних ключей для поддержания связей между таблицами.</li>
-</ul>
-
-<p>
-Таким образом, на этапе создания таблиц была сформирована структурированная и
-целостная база данных, готовая для заполнения данными и дальнейшей работы
-в рамках системы учёта домашних финансов.
-</p>
 
 <br>
 
 <h3 id="52-создание-запросов">5.2. Создание запросов</h3>
 
 <p>
-Для работы с данными в разработанной базе данных используются SQL-запросы,
-обеспечивающие добавление, изменение, удаление и выборку информации.
-Запросы реализуются с использованием стандартного языка SQL, поддерживаемого
-СУБД PostgreSQL.
+Для работы с данными в базе используются SQL-запросы,
+обеспечивающие добавление и выборку информации.
 </p>
 
 <p>
-В процессе эксплуатации базы данных применяются SQL-запросы на добавление
-и выборку данных (INSERT, SELECT).
+Основные типы запросов:
+</p>
+
+<ul>
+    <li>запросы на добавление данных (<code>INSERT</code>);</li>
+    <li>запросы на выборку данных (<code>SELECT</code>);</li>
+</ul>
+
+<p>
+Для получения данных используются многотабличные запросы с соединениями
+(<code>JOIN</code>), позволяющие получать информацию об операциях,
+пользователях, счетах, категориях и контрагентах.
 </p>
 
 <p>
-Запросы на добавление данных используются для внесения информации о новых
-пользователях, счетах, категориях, контрагентах и финансовых операциях.
+Запросы применяются как напрямую в прикладном приложении,
+так и внутри представлений базы данных.
 </p>
 
-<p>
-Запросы на выборку данных применяются для формирования отчётов и анализа
-финансовой информации пользователя. С их помощью осуществляется получение
-данных о текущем балансе счетов, суммах доходов и расходов за выбранный период,
-а также распределении расходов по категориям.
-</p>
-
-<p>
-Запросы на изменение данных используются при необходимости корректировки
-ранее введённой информации, например при изменении параметров счёта,
-категории или финансовой операции.
-</p>
-
-<p>
-Запросы на удаление данных позволяют удалять устаревшую или ошибочно введённую
-информацию с учётом ограничений ссылочной целостности.
-</p>
-
-<p>
-Для повышения удобства и эффективности работы с данными используются
-много табличные запросы с соединениями (JOIN), а также 
-могут использоваться агрегатные функции SUM и GROUP BY.
-</p>
-
-<p>
-Таким образом, разработанные SQL-запросы обеспечивают полный набор операций
-для работы с данными в системе учёта домашних финансов и позволяют получать
-необходимую аналитическую информацию.
-</p>
 
 <br>
 
 <h3 id="53-разработка-интерфейса">5.3. Разработка интерфейса</h3>
 
 <p>
-В рамках данной курсовой работы был разработан простой пользовательский интерфейс
-настольного приложения, предназначенный для демонстрации работы базы данных и
-проверки корректности реализованных механизмов хранения и обработки данных.
+Для проверки корректности работы базы данных и демонстрации её
+функциональности было разработано настольное приложение с графическим
+интерфейсом на языке Java с использованием библиотеки Swing.
 </p>
 
 <p>
-Для демонстрации работы базы данных и проверки корректности реализованных
-ограничений было разработано настольное приложение с графическим интерфейсом
-на языке Java с использованием библиотеки Swing.
-</p>
-
-<p>
-Пользовательский интерфейс должен обеспечивает следующие функции:
+Разработанный интерфейс обеспечивает следующие функции:
 </p>
 
 <ul>
-  <li>вход пользователя по логину и паролю;</li>
-  <li>просмотр финансовых операций текущего пользователя;</li>
-  <li>экспорт данных в формат CSV для последующего анализа;</li>
-  <li>добавление доходных и расходных операций;</li>
-  <li>создание резервной копии базы данных.</li>
+    <li>вход пользователя по логину и паролю;</li>
+    <li>просмотр операций текущего пользователя;</li>
+    <li>добавление доходных и расходных операций;</li>
+    <li>экспорт операций в формат CSV;</li>
+    <li>создание резервной копии базы данных.</li>
 </ul>
 
 <p>
-Взаимодействие интерфейса с базой данных осуществляется посредством SQL-запросов,
-реализующих операции добавления, изменения, удаления и выборки данных.
+Взаимодействие приложения с базой данных осуществляется через JDBC
+с использованием SQL-запросов, представлений и хранимых процедур.
 </p>
-
-<p>
-Таким образом, разработанная база данных обеспечивает возможность создания
-удобного и функционального пользовательского интерфейса для системы учёта
-домашних финансов.
-</p>
-
 <br>
 
 <h3 id="54-назначение-прав-доступа">5.4. Назначение прав доступа</h3>
 
 <p>
-Безопасность данных обеспечивается за счёт разграничения доступа на уровне базы
-данных и приложения. Каждый пользователь работает только со своими счетами,
-операциями и контрагентами. Доступ к данным других пользователей исключён.
+Разграничение доступа к данным реализовано на уровне прикладного приложения.
+Каждый пользователь работает только с теми данными, которые принадлежат его
+учётной записи.
 </p>
 
 <p>
-Контроль целостности данных реализован с помощью ограничений внешних ключей,
-ограничений CHECK, а также триггеров базы данных.
+Фильтрация данных по пользователю осуществляется с использованием параметров
+в SQL-запросах, передаваемых из приложения.
 </p>
 
 <p>
-Основные права доступа включают:
-</p>
-
-<ul>
-  <li>права на выборку данных (SELECT);</li>
-  <li>права на добавление данных (INSERT);</li>
-  <li>права на изменение данных (UPDATE);</li>
-  <li>права на удаление данных (DELETE).</li>
-</ul>
-
-<p>
-Для обычного пользователя системы предоставляется доступ только к данным,
-относящимся к его учётной записи, без возможности изменения структуры базы
-данных.
-</p>
-
-<p>
-Администратор базы данных обладает расширенными правами, включая создание
-и изменение таблиц, назначение ролей и управление правами доступа.
-</p>
-
-<p>Разграничение доступа реализовано на уровне логики запросов, 
-представлений и прикладного приложения, без использования механизма RLS.</p>
-
-<p>
-Использование механизма ролей PostgreSQL позволяет обеспечить защиту данных
-и предотвратить несанкционированный доступ к информации.
+Таким образом исключается возможность просмотра и изменения данных
+других пользователей системы.
 </p>
 
 <br>
 
 <h3 id="55-создание-индексов">5.5. Создание индексов</h3>
-
 <p>
-Для повышения производительности запросов в базе данных предусматривается 
-создание индексов по наиболее часто используемым полям, таким как 
-идентификатор пользователя и дата операции.
+Для повышения производительности выполнения запросов в базе данных
+созданы индексы по полям, наиболее часто используемым в условиях фильтрации
+и соединения таблиц.
 </p>
 
 <p>
-В разработанной базе данных индексы создаются по тем полям таблиц, которые
-наиболее часто используются в условиях выборки, соединениях таблиц и
-сортировке результатов запросов.
-</p>
-
-<p>
-Основные случаи применения индексов в базе данных:
+В частности, индексы используются:
 </p>
 
 <ul>
-  <li>поля внешних ключей, используемые для соединения таблиц;</li>
-  <li>поля, участвующие в условиях фильтрации данных;</li>
-  <li>поля, используемые для сортировки записей по дате;</li>
-  <li>поля с уникальными значениями.</li>
+    <li>по полям внешних ключей;</li>
+    <li>по идентификатору пользователя;</li>
+    <li>по дате финансовой операции.</li>
 </ul>
 
 <p>
-Создание индексов осуществляется с использованием оператора CREATE INDEX.
-При этом учитывается баланс между увеличением скорости выполнения запросов
-и дополнительными затратами ресурсов на обслуживание индексов.
-</p>
-
-<p>
-Таким образом, использование индексов позволяет повысить эффективность работы
-системы учёта домашних финансов и сократить время выполнения запросов.
+Создание индексов позволяет сократить время выполнения запросов при
+просмотре операций и формировании отчётов.
 </p>
 
 <br>
@@ -961,91 +866,45 @@ PostgreSQL.
 </h3>
 
 <p>
-Для обеспечения сохранности данных и возможности восстановления информации
-в случае сбоев или ошибок предусмотрена стратегия резервного копирования базы
-данных.
+Для обеспечения сохранности данных реализована стратегия резервного
+копирования базы данных.
 </p>
 
 <p>
-В рамках системы учёта домашних финансов резервное копирование базы данных
-реализуется с использованием стандартных средств СУБД PostgreSQL.
+В рамках проекта используется стандартная утилита PostgreSQL
+<code>pg_dump</code>, позволяющая создавать полные резервные копии базы данных.
 </p>
 
 <p>
-В рамках курсовой работы реализован экспорт данных о финансовых операциях в формат
-CSV, что позволяет использовать полученные данные во внешних приложениях,
-например, табличных процессорах.
-
+Процесс резервного копирования реализован в прикладном приложении и
+позволяет сохранять дамп базы данных в файл.
 </p>
 
 <p>
-Основные элементы стратегии резервного копирования:
-</p>
-
-<ul>
-  <li>регулярное создание полных резервных копий базы данных;</li>
-  <li>хранение резервных копий на внешних носителях или в защищённом хранилище;</li>
-  <li>контроль целостности резервных копий;</li>
-  <li>возможность восстановления базы данных из резервной копии.</li>
-</ul>
-
-<p>
-Для создания резервных копий используется утилита pg_dump, позволяющая
-сохранять структуру базы данных и все содержащиеся в ней данные.
-</p>
-
-<p>
-Реализация стратегии резервного копирования позволяет обеспечить надёжность
-хранения информации и минимизировать риски потери данных в процессе эксплуатации
-системы.
+Дополнительно реализована возможность экспорта данных о финансовых операциях
+в формат CSV, что позволяет использовать данные во внешних приложениях.
 </p>
 
 <h3 id="5-7">5.7. Разработка стратегии защиты базы данных и хранимой в ней информации средствами СУБД</h3>
 
 <p>
-Защита базы данных в рамках данного проекта реализована с использованием встроенных механизмов
-системы управления базами данных PostgreSQL. Основной подход к обеспечению безопасности заключается
-в разграничении прав доступа между различными категориями пользователей и минимизации привилегий
-прикладного приложения.
+Защита данных в рамках проекта обеспечивается за счёт использования
+механизмов целостности данных и логики прикладного уровня.
 </p>
 
 <p>
-Для обеспечения безопасности в системе определены две роли: административная роль
-<code>postgres</code>, обладающая полным доступом ко всем объектам базы данных, прикладная роль
-<code>finance_app</code>, предназначенная для работы пользовательского интерфейса, 
-а также роль <code>finance_read</code>.
+Для обеспечения целостности данных используются:
 </p>
 
-<p>
-Роль <code>finance_app</code> имеет строго ограниченный набор прав и не обладает возможностями
-изменения структуры базы данных. Данной роли разрешено выполнение операций чтения и добавления
-данных только в тех таблицах, которые необходимы для функционирования приложения. Доступ к
-критически важным операциям, таким как удаление таблиц, изменение их структуры и прямое изменение
-балансов счетов, для прикладного пользователя запрещён. Такой подход соответствует принципу
-минимально необходимых привилегий и снижает риск несанкционированного изменения данных.
-</p>
+<ul>
+    <li>первичные и внешние ключи;</li>
+    <li>ограничения <code>CHECK</code>;</li>
+    <li>ограничения уникальности.</li>
+</ul>
 
 <p>
-Для автоматического обновления балансов счетов используется серверная функция базы данных,
-вызываемая триггером при добавлении новой финансовой операции. Данная функция объявлена с
-использованием параметра <code>SECURITY DEFINER</code>, что позволяет выполнять её с правами
-владельца базы данных, не предоставляя прикладному пользователю прямой доступ к таблице счетов.
-Это обеспечивает сохранность финансовых данных и предотвращает возможность их изменения в обход
-бизнес-логики системы.
-</p>
-
-<p>
-Дополнительно в системе применяются механизмы обеспечения целостности данных, включая первичные и
-внешние ключи, ограничения типа <code>CHECK</code>, а также контроль доступа к последовательностям,
-используемым для генерации идентификаторов. В совокупности реализованные меры обеспечивают
-надёжную защиту данных, устойчивость к ошибкам прикладного уровня и соответствие базовым требованиям
-информационной безопасности.
-</p>
-
-<p>
-База данных используется в составе настольного приложения. Взаимодействие с базой
-данных осуществляется через JDBC с использованием SQL-запросов, представлений и
-хранимых процедур.
+Доступ к данным осуществляется только через прикладное приложение,
+что предотвращает несанкционированное изменение информации.
 </p>
 
 <br>
@@ -1053,50 +912,24 @@ CSV, что позволяет использовать полученные д�
 <h3 id="5-8">5.8. Разработка API, реализующего работу с базой данных стороннего приложения</h3>
 
 <p>
-В современных информационных системах база данных, как правило, не используется
-непосредственно конечным пользователем, а служит основой для работы прикладных
-программ. Для обеспечения взаимодействия базы данных с внешними приложениями
-применяются программные интерфейсы доступа, или API.
+Для взаимодействия прикладного приложения с базой данных используется
+SQL-API PostgreSQL, включающее хранимые процедуры и представления.
 </p>
 
 <p>
-В рамках данной курсовой работы разработка API рассматривается на концептуальном
-уровне и не предполагает создание полноценного серверного приложения. Основной
-задачей является описание принципов взаимодействия стороннего приложения с
-базой данных системы учёта домашних финансов.
+В базе данных реализована серверная процедура
+<code>api_add_operation</code>,
+предназначенная для добавления финансовых операций.
 </p>
 
 <p>
-В качестве программного интерфейса доступа к данным используется SQL-API базы
-данных, представленное хранимыми процедурами и представлениями, что позволяет
-подключать внешние программные модули при необходимости.
+Использование хранимых процедур позволяет централизовать бизнес-логику
+и упростить взаимодействие приложения с базой данных.
 </p>
 
 <p>
-Предполагается, что внешнее приложение обращается к базе данных через серверное
-приложение, реализующее набор методов для выполнения основных операций:
-получения данных о финансовых операциях, добавления новых записей, а также
-формирования сводной информации за заданный период времени.
-</p>
-
-<p>
-В качестве примеров логических операций API можно выделить получение списка
-финансовых операций пользователя за определённый период, добавление новой
-доходной или расходной операции, а также получение агрегированных данных по
-категориям расходов.
-</p>
-
-<p>
-Для обеспечения безопасности при работе API с базой данных предполагается
-использование механизмов аутентификации и авторизации пользователей, а также
-ограничение доступа к данным в соответствии с правами, определёнными в СУБД.
-Это позволяет предотвратить несанкционированный доступ к финансовой информации.
-</p>
-
-<p>
-Таким образом, разработка API позволяет обеспечить удобное и безопасное
-взаимодействие базы данных с внешними приложениями и создаёт основу для
-дальнейшего расширения функциональности системы учёта домашних финансов.
+Таким образом, реализован программный интерфейс доступа к данным,
+обеспечивающий корректную и безопасную работу приложения с базой данных.
 </p>
 
 <br>
@@ -1160,6 +993,820 @@ PostgreSQL.
     — М.: Питер, 2021.
   </li>
 </ol>
+
+<h2>Приложение А</h2>
+
+<p>
+В данном приложении приведён полный SQL-код создания базы данных
+для системы учёта домашних финансов, реализованной в СУБД PostgreSQL.
+Код включает создание таблиц, ограничений целостности, индексов,
+представлений и хранимых процедур.
+</p>
+
+<hr>
+
+<h3>A.1. Создание таблицы пользователей</h3>
+
+<pre><code class="language-sql">
+CREATE TABLE users (
+    user_id SERIAL PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL
+);
+</code></pre>
+
+<p>
+Таблица <b>users</b> предназначена для хранения учётных записей пользователей системы.
+</p>
+
+<hr>
+
+<h3>A.2. Создание таблицы счетов</h3>
+
+<pre><code class="language-sql">
+CREATE TABLE accounts (
+    account_id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    account_name VARCHAR(100) NOT NULL,
+    account_type VARCHAR(50),
+    balance NUMERIC(12,2) DEFAULT 0,
+
+    CONSTRAINT fk_accounts_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE
+);
+</code></pre>
+
+<p>
+Таблица <b>accounts</b> содержит информацию о финансовых счетах пользователей.
+Каждый счёт принадлежит конкретному пользователю.
+</p>
+
+<hr>
+
+<h3>A.3. Создание таблицы категорий</h3>
+
+<pre><code class="language-sql">
+CREATE TABLE categories (
+    category_id SERIAL PRIMARY KEY,
+    category_name VARCHAR(100) NOT NULL,
+    operation_type VARCHAR(10) NOT NULL
+        CHECK (operation_type IN ('income', 'expense'))
+);
+</code></pre>
+
+<p>
+Таблица <b>categories</b> используется для классификации финансовых операций
+по типу доходов и расходов.
+</p>
+
+<hr>
+
+<h3>A.4. Создание таблицы контрагентов</h3>
+
+<pre><code class="language-sql">
+CREATE TABLE payees (
+    payee_id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    payee_name VARCHAR(100) NOT NULL,
+
+    CONSTRAINT fk_payees_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE
+);
+</code></pre>
+
+<p>
+Таблица <b>payees</b> предназначена для хранения информации о контрагентах
+(магазины, работодатели и т.д.), связанных с пользователями.
+</p>
+
+<hr>
+
+<h3>A.5. Создание таблицы финансовых операций</h3>
+
+<pre><code class="language-sql">
+CREATE TABLE operations (
+    operation_id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    account_id INTEGER NOT NULL,
+    category_id INTEGER NOT NULL,
+    payee_id INTEGER NOT NULL,
+    operation_date DATE NOT NULL,
+    amount NUMERIC(12,2) NOT NULL CHECK (amount > 0),
+    operation_type VARCHAR(10) NOT NULL
+        CHECK (operation_type IN ('income', 'expense')),
+    description TEXT,
+
+    CONSTRAINT fk_operations_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id),
+
+    CONSTRAINT fk_operations_account
+        FOREIGN KEY (account_id)
+        REFERENCES accounts(account_id),
+
+    CONSTRAINT fk_operations_category
+        FOREIGN KEY (category_id)
+        REFERENCES categories(category_id),
+
+    CONSTRAINT fk_operations_payee
+        FOREIGN KEY (payee_id)
+        REFERENCES payees(payee_id)
+);
+</code></pre>
+
+<p>
+Таблица <b>operations</b> является основной таблицей системы и
+предназначена для хранения всех финансовых операций пользователей.
+</p>
+
+<hr>
+
+<h3>A.6. Создание индексов</h3>
+
+<pre><code class="language-sql">
+CREATE INDEX idx_operations_user
+    ON operations(user_id);
+
+CREATE INDEX idx_operations_account
+    ON operations(account_id);
+
+CREATE INDEX idx_operations_date
+    ON operations(operation_date);
+</code></pre>
+
+<p>
+Индексы созданы для ускорения выборок операций по пользователю,
+счёту и дате операции.
+</p>
+
+<hr>
+
+<h3>A.7. Создание представлений</h3>
+
+<pre><code class="language-sql">
+CREATE VIEW export_operations AS
+SELECT
+    o.operation_id,
+    o.user_id,
+    u.username,
+    a.account_name,
+    a.account_type,
+    o.operation_date,
+    o.operation_type,
+    c.category_name,
+    o.amount,
+    o.description
+FROM operations o
+JOIN users u ON o.user_id = u.user_id
+JOIN accounts a ON o.account_id = a.account_id
+JOIN categories c ON o.category_id = c.category_id;
+</code></pre>
+
+<p>
+Представление <b>export_operations</b> используется для формирования отчётов
+и экспорта данных о финансовых операциях.
+</p>
+
+<hr>
+
+<h3>A.8. Создание хранимой процедуры добавления операции</h3>
+
+<pre><code class="language-sql">
+CREATE OR REPLACE PROCEDURE api_add_operation(
+    p_user_id INTEGER,
+    p_account_id INTEGER,
+    p_category_id INTEGER,
+    p_payee_id INTEGER,
+    p_op_date DATE,
+    p_amount NUMERIC,
+    p_operation_type VARCHAR,
+    p_description TEXT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    INSERT INTO operations (
+        user_id,
+        account_id,
+        category_id,
+        payee_id,
+        operation_date,
+        amount,
+        operation_type,
+        description
+    )
+    VALUES (
+        p_user_id,
+        p_account_id,
+        p_category_id,
+        p_payee_id,
+        p_op_date,
+        p_amount,
+        p_operation_type,
+        p_description
+    );
+END;
+$$;
+</code></pre>
+
+<p>
+Хранимая процедура <b>api_add_operation</b> реализует серверный API
+для добавления финансовых операций из прикладного приложения.
+</p>
+
+<hr>
+
+<p>
+Приведённый SQL-код представляет собой завершённую реализацию базы данных
+проекта и используется в настольном приложении учёта домашних финансов.
+</p>
+
+<h2>Приложение Б. Листинг программного кода клиентского приложения</h2>
+
+<p>
+В данном приложении приведён листинг программного кода настольного приложения,
+реализующего взаимодействие с базой данных учёта домашних финансов.
+Приложение разработано на языке Java с использованием библиотеки Swing
+и технологии JDBC.
+</p>
+
+<hr>
+
+<h3>Б.1. Класс подключения к базе данных</h3>
+
+<pre><code class="language-java">
+package ru.finance.db;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+
+/*
+ * Класс Database предназначен для централизованного
+ * управления подключением к базе данных PostgreSQL.
+ */
+public class Database {
+
+    private static final String URL =
+        "jdbc:postgresql://localhost:5432/home_finance_final?useUnicode=true&characterEncoding=UTF-8";
+    private static final String USER = "finance_app";
+    private static final String PASSWORD = "finance_pass";
+
+    public static Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(URL, USER, PASSWORD);
+    }
+}
+</code></pre>
+
+<hr>
+
+<h3>Б.2. Класс хранения информации о текущей сессии пользователя</h3>
+
+<pre><code class="language-java">
+package ru.finance.session;
+
+/*
+ * Класс UserSession используется для хранения информации
+ * о текущем пользователе, выполнившем вход в систему.
+ */
+public class UserSession {
+
+    private static int currentUserId;
+    private static String currentUsername;
+
+    public static void setUser(int userId, String username) {
+        currentUserId = userId;
+        currentUsername = username;
+    }
+
+    public static int getUserId() {
+        return currentUserId;
+    }
+
+    public static String getUsername() {
+        return currentUsername;
+    }
+}
+</code></pre>
+
+<hr>
+
+<h3>Б.3. Окно входа в систему</h3>
+
+<pre><code class="language-java">
+package ru.finance.ui;
+
+import ru.finance.db.Database;
+import ru.finance.session.UserSession;
+
+import javax.swing.*;
+import java.awt.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+
+/*
+ * Диалог LoginDialog реализует аутентификацию пользователя
+ * по логину и паролю.
+ */
+public class LoginDialog extends JDialog {
+
+    public LoginDialog(JFrame parent) {
+        super(parent, "Вход в систему", true);
+        setLayout(new GridLayout(3, 2, 5, 5));
+
+        JTextField loginField = new JTextField();
+        JPasswordField passwordField = new JPasswordField();
+
+        add(new JLabel("Логин:"));
+        add(loginField);
+        add(new JLabel("Пароль:"));
+        add(passwordField);
+
+        JButton loginBtn = new JButton("Войти");
+        add(new JLabel());
+        add(loginBtn);
+
+        loginBtn.addActionListener(e -> {
+            try (Connection conn = Database.getConnection()) {
+
+                PreparedStatement ps = conn.prepareStatement(
+                    "SELECT user_id, username FROM users WHERE username = ? AND password_hash = ?"
+                );
+                ps.setString(1, loginField.getText().trim());
+                ps.setString(2, new String(passwordField.getPassword()));
+
+                ResultSet rs = ps.executeQuery();
+
+                if (rs.next()) {
+                    UserSession.setUser(
+                        rs.getInt("user_id"),
+                        rs.getString("username")
+                    );
+                    dispose();
+                } else {
+                    JOptionPane.showMessageDialog(this, "Неверный логин или пароль");
+                }
+
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, ex.getMessage());
+            }
+        });
+
+        pack();
+        setLocationRelativeTo(parent);
+    }
+}
+</code></pre>
+
+<hr>
+
+<h3>Б.4. Точка входа в приложение</h3>
+
+<pre><code class="language-java">
+package ru.finance;
+
+import ru.finance.session.UserSession;
+import ru.finance.ui.LoginDialog;
+import ru.finance.ui.MainFrame;
+
+/*
+ * Класс Main является точкой входа в приложение.
+ */
+public class Main {
+    public static void main(String[] args) {
+
+        LoginDialog login = new LoginDialog(null);
+        login.setVisible(true);
+
+        if (UserSession.getUserId() > 0) {
+            new MainFrame().setVisible(true);
+        } else {
+            System.exit(0);
+        }
+    }
+}
+</code></pre>
+
+<hr>
+
+<h3>Б.5. Главное окно приложения</h3>
+
+<pre><code class="language-java">
+package ru.finance.ui;
+
+import ru.finance.session.UserSession;
+import ru.finance.util.CsvExporter;
+
+import javax.swing.*;
+import java.awt.*;
+
+/*
+ * Главное окно приложения, предоставляющее доступ
+ * к основным функциям системы.
+ */
+public class MainFrame extends JFrame {
+
+    public MainFrame() {
+        setTitle("Учёт финансов — " + UserSession.getUsername());
+        setSize(800, 500);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+
+        JButton addOperationBtn = new JButton("Добавить операцию");
+        JButton viewBtn = new JButton("Просмотр операций");
+        JButton exportBtn = new JButton("Экспорт в CSV");
+        JButton backupBtn = new JButton("Резервное копирование");
+
+        addOperationBtn.addActionListener(e ->
+            new AddOperationDialog(this).setVisible(true)
+        );
+
+        viewBtn.addActionListener(e ->
+            new OperationsFrame().setVisible(true)
+        );
+
+        exportBtn.addActionListener(e -> {
+            try {
+                CsvExporter.exportOperations("operations.csv");
+                JOptionPane.showMessageDialog(this, "Экспорт выполнен");
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, ex.getMessage());
+            }
+        });
+
+        backupBtn.addActionListener(e ->
+            ru.finance.util.BackupUtil.createBackup()
+        );
+
+        setLayout(new GridLayout(4, 1, 5, 5));
+        add(addOperationBtn);
+        add(viewBtn);
+        add(exportBtn);
+        add(backupBtn);
+    }
+}
+</code></pre>
+
+<hr>
+
+<h3>Б.6. Просмотр операций пользователя</h3>
+
+<pre><code class="language-java">
+package ru.finance.ui;
+
+import ru.finance.db.Database;
+import ru.finance.session.UserSession;
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.sql.*;
+
+/*
+ * Окно отображения финансовых операций текущего пользователя.
+ */
+public class OperationsFrame extends JFrame {
+
+    public OperationsFrame() {
+        setTitle("Операции");
+        setSize(800, 400);
+        setLocationRelativeTo(null);
+
+        DefaultTableModel model = new DefaultTableModel();
+        JTable table = new JTable(model);
+
+        model.addColumn("Дата");
+        model.addColumn("Пользователь");
+        model.addColumn("Счёт");
+        model.addColumn("Контрагент");
+        model.addColumn("Категория");
+        model.addColumn("Тип");
+        model.addColumn("Сумма");
+        model.addColumn("Описание");
+
+        try (Connection conn = Database.getConnection()) {
+            PreparedStatement ps = conn.prepareStatement(
+                "SELECT o.operation_date, u.username, a.account_name, " +
+                "p.payee_name, c.category_name, o.operation_type, " +
+                "o.amount, o.description " +
+                "FROM operations o " +
+                "JOIN users u ON o.user_id = u.user_id " +
+                "JOIN accounts a ON o.account_id = a.account_id " +
+                "JOIN payees p ON o.payee_id = p.payee_id " +
+                "JOIN categories c ON o.category_id = c.category_id " +
+                "WHERE o.user_id = ?"
+            );
+
+            ps.setInt(1, UserSession.getUserId());
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                model.addRow(new Object[]{
+                    rs.getDate(1),
+                    rs.getString(2),
+                    rs.getString(3),
+                    rs.getString(4),
+                    rs.getString(5),
+                    rs.getString(6),
+                    rs.getBigDecimal(7),
+                    rs.getString(8)
+                });
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, e.getMessage());
+        }
+
+        add(new JScrollPane(table));
+    }
+}
+</code></pre>
+
+<hr>
+
+<h3>Б.7. Экспорт данных в формат CSV</h3>
+
+<pre><code class="language-java">
+package ru.finance.util;
+
+import ru.finance.db.Database;
+import ru.finance.session.UserSession;
+
+import java.io.FileWriter;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+
+/*
+ * Класс CsvExporter предназначен для экспорта операций
+ * текущего пользователя в формат CSV.
+ */
+public class CsvExporter {
+
+    public static void exportOperations(String filePath) throws Exception {
+
+        try (Connection conn = Database.getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                 "SELECT * FROM export_operations WHERE user_id = ?"
+             );
+             FileWriter writer = new FileWriter(filePath)) {
+
+            ps.setInt(1, UserSession.getUserId());
+            ResultSet rs = ps.executeQuery();
+
+            writer.write("user,account,type,date,operation,category,amount,description\n");
+
+            while (rs.next()) {
+                writer.write(
+                    rs.getString("username") + "," +
+                    rs.getString("account_name") + "," +
+                    rs.getString("account_type") + "," +
+                    rs.getDate("operation_date") + "," +
+                    rs.getString("operation_type") + "," +
+                    rs.getString("category_name") + "," +
+                    rs.getBigDecimal("amount") + "," +
+                    rs.getString("description") + "\n"
+                );
+            }
+        }
+    }
+}
+</code></pre>
+
+<hr>
+
+<h3>Б.8. Резервное копирование базы данных</h3>
+
+<pre><code class="language-java">
+package ru.finance.util;
+
+import javax.swing.*;
+import java.io.IOException;
+
+/*
+ * Класс BackupUtil реализует создание резервной копии
+ * базы данных с использованием утилиты pg_dump.
+ */
+public class BackupUtil {
+
+    public static void createBackup() {
+        try {
+            ProcessBuilder pb = new ProcessBuilder(
+                "C:\\Program Files\\PostgreSQL\\18\\bin\\pg_dump.exe",
+                "-U", "postgres",
+                "-F", "c",
+                "-f", "backup.dump",
+                "home_finance_final"
+            );
+
+            pb.environment().put("PGPASSWORD", "ТВОЙ_ПАРОЛЬ_POSTGRES");
+            pb.start();
+
+            JOptionPane.showMessageDialog(null, "Резервная копия создана");
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(null, e.getMessage());
+        }
+    }
+}
+</code></pre>
+
+<hr>
+
+<h3>Б.9. Диалог добавления финансовой операции</h3>
+
+<p>
+Класс <code>AddOperationDialog</code> реализует диалоговое окно,
+предназначенное для ввода и сохранения финансовой операции.
+Добавление операции осуществляется с использованием хранимой процедуры
+<code>api_add_operation</code>, что обеспечивает централизованную реализацию
+бизнес-логики на стороне базы данных.
+</p>
+
+<pre><code class="language-java">
+package ru.finance.ui;
+
+import ru.finance.db.Database;
+import ru.finance.session.UserSession;
+
+import javax.swing.*;
+import java.awt.*;
+import java.math.BigDecimal;
+import java.sql.*;
+import java.util.HashMap;
+import java.util.Map;
+
+/*
+ * Диалог AddOperationDialog предназначен для добавления
+ * финансовых операций текущего пользователя.
+ */
+public class AddOperationDialog extends JDialog {
+
+    public AddOperationDialog(JFrame parent) {
+        super(parent, "Добавить операцию", true);
+
+        setLayout(new GridLayout(7, 2, 8, 8));
+
+        // ====== ЗАГРУЗКА СЧЁТОВ ======
+        Map<String, Integer> accountMap = new HashMap<>();
+        JComboBox<String> accountBox = new JComboBox<>();
+
+        try (Connection conn = Database.getConnection()) {
+            PreparedStatement ps = conn.prepareStatement(
+                "SELECT account_id, account_name FROM accounts WHERE user_id = ?"
+            );
+            ps.setInt(1, UserSession.getUserId());
+
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                accountMap.put(
+                    rs.getString("account_name"),
+                    rs.getInt("account_id")
+                );
+                accountBox.addItem(rs.getString("account_name"));
+            }
+        } catch (Exception e) {
+            showError("Ошибка загрузки счетов", e);
+        }
+
+        // ====== ЗАГРУЗКА КАТЕГОРИЙ ======
+        Map<String, Integer> categoryMap = new HashMap<>();
+        JComboBox<String> categoryBox = new JComboBox<>();
+
+        try (Connection conn = Database.getConnection();
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(
+                 "SELECT category_id, category_name FROM categories"
+             )) {
+
+            while (rs.next()) {
+                categoryMap.put(
+                    rs.getString("category_name"),
+                    rs.getInt("category_id")
+                );
+                categoryBox.addItem(rs.getString("category_name"));
+            }
+        } catch (Exception e) {
+            showError("Ошибка загрузки категорий", e);
+        }
+
+        // ====== ЗАГРУЗКА КОНТРАГЕНТОВ ======
+        Map<String, Integer> payeeMap = new HashMap<>();
+        JComboBox<String> payeeBox = new JComboBox<>();
+
+        try (Connection conn = Database.getConnection()) {
+            PreparedStatement ps = conn.prepareStatement(
+                "SELECT payee_id, payee_name FROM payees WHERE user_id = ?"
+            );
+            ps.setInt(1, UserSession.getUserId());
+
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                payeeMap.put(
+                    rs.getString("payee_name"),
+                    rs.getInt("payee_id")
+                );
+                payeeBox.addItem(rs.getString("payee_name"));
+            }
+        } catch (Exception e) {
+            showError("Ошибка загрузки контрагентов", e);
+        }
+
+        // ====== ПОЛЯ ВВОДА ======
+        JTextField dateField = new JTextField("2025-12-17");
+        JTextField amountField = new JTextField();
+        JTextField descriptionField = new JTextField();
+
+        JComboBox<String> typeBox = new JComboBox<>(
+            new String[]{"income", "expense"}
+        );
+
+        Dimension fieldSize = new Dimension(200, 25);
+        dateField.setPreferredSize(fieldSize);
+        amountField.setPreferredSize(fieldSize);
+        descriptionField.setPreferredSize(fieldSize);
+        accountBox.setPreferredSize(fieldSize);
+        categoryBox.setPreferredSize(fieldSize);
+        payeeBox.setPreferredSize(fieldSize);
+        typeBox.setPreferredSize(fieldSize);
+
+        // ====== ФОРМИРОВАНИЕ ИНТЕРФЕЙСА ======
+        add(new JLabel("Дата (YYYY-MM-DD):"));
+        add(dateField);
+
+        add(new JLabel("Счёт:"));
+        add(accountBox);
+
+        add(new JLabel("Контрагент:"));
+        add(payeeBox);
+
+        add(new JLabel("Категория:"));
+        add(categoryBox);
+
+        add(new JLabel("Тип операции:"));
+        add(typeBox);
+
+        add(new JLabel("Сумма:"));
+        add(amountField);
+
+        add(new JLabel("Описание:"));
+        add(descriptionField);
+
+        JButton saveBtn = new JButton("Сохранить");
+        add(new JLabel());
+        add(saveBtn);
+
+        // ====== СОХРАНЕНИЕ ОПЕРАЦИИ ======
+        saveBtn.addActionListener(e -> {
+            try (Connection conn = Database.getConnection()) {
+
+                CallableStatement cs = conn.prepareCall(
+                    "CALL api_add_operation(?, ?, ?, ?, ?, ?, ?, ?)"
+                );
+
+                cs.setInt(1, UserSession.getUserId());
+                cs.setInt(2, accountMap.get(accountBox.getSelectedItem().toString()));
+                cs.setInt(3, categoryMap.get(categoryBox.getSelectedItem().toString()));
+                cs.setInt(4, payeeMap.get(payeeBox.getSelectedItem().toString()));
+                cs.setDate(5, Date.valueOf(dateField.getText()));
+                cs.setBigDecimal(6, new BigDecimal(amountField.getText()));
+                cs.setString(7, typeBox.getSelectedItem().toString());
+                cs.setString(8, descriptionField.getText());
+
+                cs.execute();
+
+                JOptionPane.showMessageDialog(this, "Операция добавлена");
+                dispose();
+
+            } catch (Exception ex) {
+                showError("Ошибка добавления операции", ex);
+            }
+        });
+
+        pack();
+        setMinimumSize(new Dimension(420, 380));
+        setLocationRelativeTo(parent);
+    }
+
+    private void showError(String title, Exception e) {
+        JOptionPane.showMessageDialog(
+            this,
+            title + ":\n" + e.getMessage(),
+            "Ошибка",
+            JOptionPane.ERROR_MESSAGE
+        );
+    }
+}
+</code></pre>
+
+
+<p>
+Приведённый листинг демонстрирует реализацию клиентского приложения,
+обеспечивающего работу с базой данных учёта домашних финансов.
+</p>
+
 
 
 
