@@ -338,14 +338,15 @@
 
 <div class="page-break"></div>
 
+
 <h2 id="3-логическая-структура-бд">3. Логическая структура БД</h2>
 
 <p>Логическая модель преобразует ER-диаграмму в схему реляционных таблиц. Все связи реализуются через внешние ключи (FOREIGN KEY). При проектировании соблюдены принципы нормализации до третьей нормальной формы (3NF), что устраняет избыточность и аномалии обновления.</p>
 
 <p><strong>Сознательная денормализация применена для производительности</strong>:</p>
 <ol>
-    <li><strong>Таблица Athlete:</strong> Содержит поле <code>current_group_id<code> для быстрого определения основной группы воспитанника, хотя это можно вычислить через <code>GroupEnrollment<code>.</li>
-    <li><strong>Таблица TrainingGroup:</strong> Содержит поле <code>current_size<code> (текущее количество), которое должно обновляться триггером при зачислении/отчислении, чтобы избежать подсчета <code>COUNT(*)<code> в частых запросах.</li>
+    <li><strong>Таблица Athlete:</strong> Содержит поле <code>current_group_id</code> для быстрого определения основной группы воспитанника, хотя это можно вычислить через <code>GroupEnrollment</code>.</li>
+    <li><strong>Таблица TrainingGroup:</strong> Содержит поле <code>current_size</code> (текущее количество), которое должно обновляться триггером при зачислении/отчислении, чтобы избежать подсчета <code>COUNT(*)</code> в частых запросах.</li>
 </ol>
 
 <p>Данные денормализованные поля должны обновляться с помощью триггеров или фоновых задач (cron), чтобы обеспечить их актуальность.</p>
@@ -367,11 +368,11 @@
 <h3>4.2. Типы данных PostgreSQL:</h3>
 <table>
     <tr><th>Тип данных PostgreSQL</th><th>Применение</th><th>Пример поля</th></tr>
-    <tr><td><code>SERIAL</code> / <code>BIGSERIAL</code></td><td>Первичные ключи.
-    <tr><td><code>VARCHAR(n)</code> / <code>TEXT</code></td><td>Текст: для имён, телефонов; для заметок. 
-    <tr><td><code>INTEGER</code> / <code>DECIMAL(10,2)</code></td><td>Числа: для возрастов, количеств; для финансовых сумм.
-    <tr><td><code>DATE</code> / <code>TIMESTAMPTZ</code></td><td>Даты/время: (дата рождения), (метка создания).
-    <tr><td><code>BOOLEAN</code></td><td>Логика.
+    <tr><td><code>SERIAL</code> / <code>BIGSERIAL</code></td><td>Первичные ключи.</td><td><code>athlete_id SERIAL PRIMARY KEY</code></td></tr>
+    <tr><td><code>VARCHAR(n)</code> / <code>TEXT</code></td><td>Текст: для имён, телефонов; для заметок.</td><td><code>last_name VARCHAR(100)</code>, <code>notes TEXT</code></td></tr>
+    <tr><td><code>INTEGER</code> / <code>DECIMAL(10,2)</code></td><td>Числа: для возрастов, количеств; для финансовых сумм.</td><td><code>age INTEGER</code>, <code>amount DECIMAL(10,2)</code></td></tr>
+    <tr><td><code>DATE</code> / <code>TIMESTAMPTZ</code></td><td>Даты/время: (дата рождения), (метка создания).</td><td><code>birth_date DATE</code>, <code>created_at TIMESTAMPTZ</code></td></tr>
+    <tr><td><code>BOOLEAN</code></td><td>Логика.</td><td><code>is_active BOOLEAN</code></td></tr>
 </table>
 
 <h3>4.3. Стратегия резервного копирования</h3>
@@ -387,7 +388,7 @@
 # Пример скрипта для ежедневного бэкапа (backup.sh)
 BACKUP_DIR="/var/backups/postgresql"
 DATE=$(date +%Y%m%d_%H%M%S)
-DB_NAME="rental_agency"
+DB_NAME="sport_school"
 
 # Полное резервное копирование в custom формате
 pg_dump -h localhost -U postgres -F c -b -v -f "$BACKUP_DIR/full_$DATE.backup" $DB_NAME
@@ -399,8 +400,6 @@ find $BACKUP_DIR -name "*.backup" -mtime +7 -delete
 # Проверка целостности бэкапа (список содержимого)
 pg_restore -l "$BACKUP_DIR/full_$DATE.backup" > /dev/null && echo "Backup $DATE OK" || echo "Backup $DATE FAILED"</code></pre>
 
-
-
 <div class="page-break"></div>
 
 <h2 id="5-реализация-проекта-в-среде-конкретной-субд">5. Реализация проекта в среде PostgreSQL</h2>
@@ -408,10 +407,10 @@ pg_restore -l "$BACKUP_DIR/full_$DATE.backup" > /dev/null && echo "Backup $DATE 
 <h3 id="51-создание-таблиц">5.1. Создание таблиц</h3>
 <p>Приведен SQL код создания основных таблиц базы данных. Полный скрипт включает все таблицы, индексы, триггеры и заполнение тестовыми данными.</p>
 
-<h4>5.1.1. Таблица - основа системы аутентификации</h4>
-<pre><code class="language-sql">-- Таблица 
+<h4>5.1.1. Таблица - основа системы</h4>
+<pre><code class="language-sql">-- Таблица Родитель
 CREATE TABLE parent (
-   parent_id SERIAL PRIMARY KEY,
+    parent_id SERIAL PRIMARY KEY,
     last_name VARCHAR(100) NOT NULL,
     first_name VARCHAR(100) NOT NULL,
     patronymic VARCHAR(100),
@@ -421,6 +420,7 @@ CREATE TABLE parent (
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Таблица Воспитанник
 CREATE TABLE athlete (
     athlete_id SERIAL PRIMARY KEY,
     last_name VARCHAR(100) NOT NULL,
@@ -434,6 +434,15 @@ CREATE TABLE athlete (
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Таблица Группа (должна быть создана до group_enrollment)
+CREATE TABLE training_group (
+    group_id SERIAL PRIMARY KEY,
+    group_name VARCHAR(100) NOT NULL,
+    current_size INTEGER DEFAULT 0,
+    -- ... другие поля
+);
+
+-- Таблица Зачисление в группу
 CREATE TABLE group_enrollment (
     enrollment_id SERIAL PRIMARY KEY,
     athlete_id INTEGER NOT NULL REFERENCES athlete(athlete_id) ON DELETE CASCADE,
@@ -441,14 +450,13 @@ CREATE TABLE group_enrollment (
     enroll_date DATE NOT NULL DEFAULT CURRENT_DATE,
     unenroll_date DATE,
     CONSTRAINT unique_active_enrollment UNIQUE (athlete_id, group_id) WHERE (unenroll_date IS NULL)
-);
+);</code></pre>
 
 <h3 id="52-создание-запросов">5.2. Создание запросов</h3>
 <p>Разработаны основные SQL-запросы для выполнения бизнес-логики системы.</p>
 
 <h4>5.2.1. Запрос на формирование расписания группы на неделю:</h4>
-<pre><code class="language-sql">-- 
--- на даты с check_in по check_out (исключая существующие подтвержденные/активные брони)
+<pre><code class="language-sql">-- Получение расписания группы
 SELECT g.group_name, s.lesson_date, s.start_time, s.end_time, s.location,
        t.last_name || ' ' || LEFT(t.first_name, 1) || '.' AS trainer_name
 FROM schedule s
@@ -457,10 +465,10 @@ JOIN trainer tr ON g.trainer_id = tr.trainer_id
 JOIN employee t ON tr.employee_id = t.employee_id
 WHERE g.group_id = 5
   AND s.lesson_date BETWEEN '2025-04-01' AND '2025-04-07'
-ORDER BY s.lesson_date, s.start_time;
+ORDER BY s.lesson_date, s.start_time;</code></pre>
 
 <h4>5.2.2. Триггер для автоматического обновления размера группы при зачислении:</h4>
-<pre><code class="language-sql">-- 
+<pre><code class="language-sql">-- Триггерная функция
 CREATE OR REPLACE FUNCTION update_group_size_on_enroll()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -477,12 +485,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Создание триггера
 CREATE TRIGGER trg_group_size_change
 AFTER INSERT OR UPDATE ON group_enrollment
-FOR EACH ROW EXECUTE FUNCTION update_group_size_on_enroll();
+FOR EACH ROW EXECUTE FUNCTION update_group_size_on_enroll();</code></pre>
 
 <h4>5.2.3. Запрос для отчета о платежах за месяц:</h4>
-<pre><code class="language-sql">-- 
+<pre><code class="language-sql">-- Отчет по платежам
 SELECT a.last_name || ' ' || a.first_name AS athlete_name,
        p.last_name || ' ' || p.first_name AS parent_name,
        pay.amount, pay.payment_date, pay.period_month, pay.period_year,
@@ -492,23 +501,24 @@ JOIN athlete a ON pay.athlete_id = a.athlete_id
 JOIN parent p ON a.parent_id = p.parent_id
 JOIN tariff t ON pay.tariff_id = t.tariff_id
 WHERE pay.period_month = 4 AND pay.period_year = 2025
-ORDER BY pay.payment_date DESC;
+ORDER BY pay.payment_date DESC;</code></pre>
 
 <h3 id="53-разработка-интерфейса">5.3. Разработка интерфейса</h3>
 <p>Веб-интерфейс реализуется на PHP 8.x с использованием Bootstrap 5 для адаптивного дизайна. Архитектура: простой MVC-подход.</p>
 
-<h4>5.3. Главная страница системы (index.php) - Панель управления (Dashboard) с виджетами: количество воспитанников, предстоящие соревнования, календарь занятий на сегодня.</h4>
-
+<h4>5.3.1. Главная страница системы</h4>
+<p>Панель управления (Dashboard) с виджетами: количество воспитанников, предстоящие соревнования, календарь занятий на сегодня.</p>
+<ul>
     <li><strong>Разделы:</strong> Навигационное меню ведет к разделам: "Воспитанники", "Группы", "Расписание", "Соревнования", "Финансы".</li>
     <li><strong>CRUD-интерфейсы:</strong> Для каждой основной сущности реализованы формы и таблицы для просмотра, добавления, редактирования и удаления записей (с подтверждением).</li>
     <li><strong>Ролевой доступ:</strong> Интерфейс динамически меняется в зависимости от роли пользователя.</li>
-    
+</ul>
+
 <h3 id="54-назначение-прав-доступа">5.4. Назначение прав доступа</h3>
 <p>Права реализованы на двух уровнях: на уровне базы данных (роли PostgreSQL) и на уровне приложения (проверка роли в PHP-сессии).</p>
 
-<h4>5.4. Создание ролей в PostgreSQL</h4>
+<h4>5.4.1. Создание ролей в PostgreSQL</h4>
 <pre><code class="language-sql">-- Создание ролей (групп)
--- Создание ролей в PostgreSQL
 CREATE ROLE sport_admin WITH LOGIN PASSWORD 'admin_pass';
 CREATE ROLE sport_trainer WITH LOGIN PASSWORD 'trainer_pass';
 CREATE ROLE sport_accountant WITH LOGIN PASSWORD 'accountant_pass';
@@ -522,7 +532,7 @@ GRANT SELECT, INSERT, UPDATE ON attendance, schedule TO sport_trainer;
 
 -- Бухгалтер: доступ только к финансовым данным
 GRANT SELECT, INSERT, UPDATE ON payment, tariff TO sport_accountant;
-GRANT SELECT ON athlete, parent TO sport_accountant;
+GRANT SELECT ON athlete, parent TO sport_accountant;</code></pre>
 
 <h3 id="55-создание-индексов">5.5. Создание индексов</h3>
 <p>Индексы созданы для ускорения наиболее частых и критичных по производительности запросов.</p>
@@ -535,34 +545,33 @@ CREATE INDEX idx_group_trainer ON training_group(trainer_id);
 CREATE INDEX idx_schedule_group_date ON schedule(group_id, lesson_date);
 CREATE INDEX idx_attendance_athlete_date ON attendance(athlete_id, schedule_id);
 CREATE INDEX idx_payment_athlete_date ON payment(athlete_id, period_year, period_month);
-CREATE INDEX idx_athlete_birth_date ON athlete(birth_date); -- Для фильтра по возрасту
+CREATE INDEX idx_athlete_birth_date ON athlete(birth_date); -- Для фильтра по возрасту</code></pre>
 
 <h3 id="56-разработка-стратегии-резервного-копирования-базы-данных">5.6. Разработка стратегии резервного копирования базы данных</h3>
-    
+
 <h4>5.6.1. Настройка архивации WAL в postgresql.conf</h4>
 <pre><code class="language-ini"># В файле postgresql.conf
 wal_level = replica                     # Минимум replica для архивации
 archive_mode = on                       # Включить архивацию
 archive_command = 'test ! -f /var/backups/postgresql/wal_archive/%f && cp %p /var/backups/postgresql/wal_archive/%f'
-# Команда копирует WAL-файл в директорию архива. В продакшене нужно копировать в облако.
-</code></pre>
+# Команда копирует WAL-файл в директорию архива. В продакшене нужно копировать в облако.</code></pre>
 
 <h4>5.6.2. Скрипт для полного бэкапа (backup_full.sh)</h4>
 <pre><code class="language-bash">#!/bin/bash
 # /usr/local/bin/backup_full.sh
 BACKUP_ROOT="/var/backups/postgresql"
 DATE=$(date +%Y%m%d_%H%M%S)
-DB_NAME="rental_agency"
+DB_NAME="sport_school"
 BACKUP_FILE="$BACKUP_ROOT/full_$DATE.sql.gz"
 
-<h4>Экспорт с использованием pg_dump, сжатие gzip на лету</h4>
+# Экспорт с использованием pg_dump, сжатие gzip на лету
 pg_dump -h localhost -U postgres -d $DB_NAME \
   --format=plain \
   --no-owner \
   --no-privileges \
   --verbose 2>&1 | gzip > $BACKUP_FILE
 
-<h4>Проверка успешности создания</h4>
+# Проверка успешности создания
 if [ $? -eq 0 ]; then
   echo "[$DATE] Full backup successful: $BACKUP_FILE" >> $BACKUP_ROOT/backup.log
   # Отправка в облако (пример для Yandex Cloud)
@@ -573,33 +582,32 @@ else
   echo "Backup failed for $DB_NAME on $(hostname)" | mail -s "BACKUP FAILURE" admin@mail.ru
 fi
 
-<h4>Удаление старых локальных бэкапов (храним 7 дней)</h4>
-find $BACKUP_ROOT -name "full_*.sql.gz" -mtime +7 -delete
-</code></pre>
+# Удвление старых локальных бэкапов (храним 7 дней)
+find $BACKUP_ROOT -name "full_*.sql.gz" -mtime +7 -delete</code></pre>
 
 <h4>5.6.3. Задание в crontab для автоматического выполнения</h4>
 <pre><code class="language-crontab"># Ежедневно в 2:30 ночи
 30 2 * * * /usr/local/bin/backup_full.sh
 
-<h4>Каждый час - синхронизация WAL-архивов с облаком (упрощенный пример)</h4>
+# Каждый час - синхронизация WAL-архивов с облаком (упрощенный пример)
 0 * * * * rsync -avz /var/backups/postgresql/wal_archive/ user@backup-server:/backups/wal/
 
-<h4>Еженедельно в воскресенье - проверка целостности последнего бэкапа</h4>
-0 5 * * 0 /usr/local/bin/verify_backup.sh
-</code></pre>
+# Еженедельно в воскресенье - проверка целостности последнего бэкапа
+0 5 * * 0 /usr/local/bin/verify_backup.sh</code></pre>
 
 <h3 id="57-разработка-стратегии-защиты-базы-данных-и-хранимой-в-ней-информации">5.7. Разработка стратегии защиты базы данных и хранимой в ней информации</h3>
 <p>Помимо ролевой модели и шифрования паролей, реализованы дополнительные меры защиты.</p>
+<ul>
+    <li><strong>Шифрование паролей:</strong> Хранение только хэшей (bcrypt) в таблице users.</li>
+    <li><strong>Подготовленные выражения (Prepared Statements):</strong> В PHP-коде для защиты от SQL-инъекций.</li>
+    <li><strong>HTTPS:</strong> Обязательное использование для веб-интерфейса.</li>
+    <li><strong>Ограничение подключений по IP:</strong> Настройка в pg_hba.conf.</li>
+</ul>
 
- Шифрование паролей: Хранение только хэшей (bcrypt) в таблице users.
- Подготовленные выражения (Prepared Statements): В PHP-коде для защиты от SQL-инъекций.
- HTTPS: Обязательное использование для веб-интерфейса.
- Ограничение подключений по IP: Настройка в pg_hba.conf.
-
-<h3 id="58-разработка-api-для-мобильного-приложения-родителейя">5.8. Разработка API для мобильного приложения родителей</h3>
+<h3 id="58-разработка-api-для-мобильного-приложения-родителей">5.8. Разработка API для мобильного приложения родителей</h3>
 
 <h4>5.8.1. Базовая структура API (api/index.php)</h4>
-<pre><code class="language-php"><?php
+<pre><code class="language-php">&lt;?php
 // api/index.php
 header('Content-Type: application/json');
 require_once '../config.php';
@@ -632,17 +640,16 @@ switch ("$method $endpoint") {
     default:
         http_response_code(404);
         echo json_encode(['error' => 'Endpoint not found']);
-}</code></pre>
+}
+?&gt;</code></pre>
 
-Простой REST API на PHP, возвращающий данные в формате JSON.
-
-    Endpoint GET /api/athlete/{id}/schedule: Возвращает расписание занятий ребенка.
-
-    Endpoint GET /api/athlete/{id}/payments: Возвращает историю платежей.
-
-    Endpoint GET /api/competitions/upcoming: Список ближайших соревнований.
-
-    Аутентификация: По токену (JWT), выданному при входе в личный кабинет.
+<p>Простой REST API на PHP, возвращающий данные в формате JSON.</p>
+<ul>
+    <li><strong>Endpoint GET /api/athlete/{id}/schedule:</strong> Возвращает расписание занятий ребенка.</li>
+    <li><strong>Endpoint GET /api/athlete/{id}/payments:</strong> Возвращает историю платежей.</li>
+    <li><strong>Endpoint GET /api/competitions/upcoming:</strong> Список ближайших соревнований.</li>
+    <li><strong>Аутентификация:</strong> По токену (JWT), выданному при входе в личный кабинет.</li>
+</ul>
 
 <div class="page-break"></div>
 
@@ -651,16 +658,15 @@ switch ("$method $endpoint") {
 <p>В ходе выполнения курсовой работы была успешно спроектирована и реализована база данных для спортивной школы. Были достигнуты все поставленные цели:</p>
 
 <ol>
-    <li><strong>Проведен детальный анализ предметной области, выявлены ключевые сущности и процессы.</strong> позволила четко определить границы системы, выделить ключевые бизнес-процессы.</li>
-    <li><strong>Проектирование базы данных</strong> бПостроены инфологическая, логическая и физическая модели БД.</li>
+    <li><strong>Проведен детальный анализ предметной области, выявлены ключевые сущности и процессы.</strong> Анализ позволил четко определить границы системы, выделить ключевые бизнес-процессы.</li>
+    <li><strong>Проектирование базы данных.</strong> Построены инфологическая, логическая и физическая модели БД.</li>
     <li><strong>База данных реализована в СУБД PostgreSQL:</strong> созданы таблицы, индексы, триггеры для автоматизации бизнес-логики (контроль размера групп, посещаемости).</li>
-    <li><strong>Веб-интерфейс на PHP и Bootstrap</strong> Разработан прототип веб-интерфейса, обеспечивающий удобную работу с данными для различных категорий пользователей.</li>
-    <li><strong>Система безопасности</strong> Реализована система безопасности, включая разграничение прав доступа и стратегию резервного копирования.</li>
-    <li><strong>REST API</strong> обеспечивает возможность интеграции системы с мобильными приложениями, партнерскими сайтами и другими внешними сервисами, открывая пути для масштабирования бизнеса.</li>
-   
+    <li><strong>Веб-интерфейс на PHP и Bootstrap:</strong> Разработан прототип веб-интерфейса, обеспечивающий удобную работу с данными для различных категорий пользователей.</li>
+    <li><strong>Система безопасности:</strong> Реализована система безопасности, включая разграничение прав доступа и стратегию резервного копирования.</li>
+    <li><strong>REST API:</strong> Обеспечивает возможность интеграции системы с мобильными приложениями, партнерскими сайтами и другими внешними сервисами, открывая пути для масштабирования бизнеса.</li>
 </ol>
 
-<p>Разработанная система способна значительно повысить эффективность управления спортивной школой за счет автоматизации рутинных задач, обеспечения целостности данных и оперативного доступа к информации. В перспективе систему можно расширить, добавив модуль онлайн-записи на занятия, интеграцию с электронным дневником (для школ), или модуль анализа видео тренировок.
+<p>Разработанная система способна значительно повысить эффективность управления спортивной школой за счет автоматизации рутинных задач, обеспечения целостности данных и оперативного доступа к информации. В перспективе систему можно расширить, добавив модуль онлайн-записи на занятия, интеграцию с электронным дневником (для школ), или модуль анализа видео тренировок.</p>
 
 <div class="page-break"></div>
 
@@ -693,10 +699,6 @@ switch ("$method $endpoint") {
 
 <h3>Приложение Г: ER-диаграмма (графический файл, созданный в pgAdmin, DBDesigner или draw.io).</h3>
     
- Взаимодействие с другими программами
-
-<p><em>Руководство программиста (ГОСТ 19.503-79) включает: общее описание архитектуры системы (клиент-сервер, СУБД PostgreSQL, веб-сервер Apache/PHP), структуру базы данных (полные DDL-скрипты всех таблиц, индексов, триггеров, представлений), описание API (endpoints, форматы запросов/ответов, аутентификация), инструкции по развертыванию среды разработки и production-окружения, рекомендации по расширению системы (добавление новых таблиц, интеграция новых платежных шлюзов).</em></p>
-
 <h3>Приложение D: Код программных модулей</h3>
 
 <p><em>Полный исходный код всех файлов проекта, представленный в техническом задании в начале этого документа, является неотъемлемой частью данной пояснительной записки. Код включает:</em></p>
