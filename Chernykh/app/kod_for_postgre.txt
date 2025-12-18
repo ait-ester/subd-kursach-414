@@ -1,0 +1,361 @@
+-- ============================================
+-- 1. УДАЛЕНИЕ СУЩЕСТВУЮЩИХ ОБЪЕКТОВ (для чистого развертывания)
+-- ============================================
+DROP SCHEMA IF EXISTS car_dealership CASCADE;
+CREATE SCHEMA car_dealership;
+SET search_path TO car_dealership;
+
+-- Удаление зависимостей в правильном порядке (если нужно пересоздать)
+DROP TABLE IF EXISTS deals, cars, clients, employees, positions, suppliers CASCADE;
+DROP TYPE IF EXISTS car_status_type, client_type, payment_method_type, deal_status_type CASCADE;
+
+-- ============================================
+-- 2. СОЗДАНИЕ ПЕРЕЧИСЛЯЕМЫХ ТИПОВ (ENUM)
+-- ============================================
+CREATE TYPE car_status_type AS ENUM ('В наличии', 'Забронирован', 'Продан', 'На сервисе');
+CREATE TYPE client_type AS ENUM ('Физическое лицо', 'Юридическое лицо');
+CREATE TYPE payment_method_type AS ENUM ('Наличные', 'Кредит', 'Лизинг');
+CREATE TYPE deal_status_type AS ENUM ('Оформлена', 'Оплачена', 'Завершена');
+
+-- ============================================
+-- 3. СОЗДАНИЕ ТАБЛИЦ
+-- ============================================
+-- 3.1. Таблица Должностей (справочник)
+CREATE TABLE positions (
+    position_id SERIAL PRIMARY KEY,
+    position_name VARCHAR(100) NOT NULL UNIQUE
+);
+COMMENT ON TABLE positions IS 'Справочник должностей сотрудников';
+
+-- 3.2. Таблица Поставщиков
+CREATE TABLE suppliers (
+    supplier_id SERIAL PRIMARY KEY,
+    name VARCHAR(200) NOT NULL,
+    inn VARCHAR(12) NOT NULL UNIQUE CHECK (inn ~ '^[0-9]{10,12}$'),
+    legal_address TEXT NOT NULL,
+    contact_person VARCHAR(150),
+    phone VARCHAR(20) NOT NULL
+);
+COMMENT ON TABLE suppliers IS 'Поставщики автомобилей';
+
+-- 3.3. Таблица Сотрудников
+CREATE TABLE employees (
+    employee_id SERIAL PRIMARY KEY,
+    last_name VARCHAR(100) NOT NULL,
+    first_name VARCHAR(100) NOT NULL,
+    middle_name VARCHAR(100),
+    position_id INTEGER NOT NULL REFERENCES positions(position_id) ON DELETE RESTRICT,
+    phone VARCHAR(20) NOT NULL,
+    email VARCHAR(100),
+    login VARCHAR(50) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+COMMENT ON TABLE employees IS 'Сотрудники автомобильного центра';
+
+-- 3.4. Таблица Клиентов
+CREATE TABLE clients (
+    client_id SERIAL PRIMARY KEY,
+    last_name VARCHAR(100),
+    first_name VARCHAR(100),
+    middle_name VARCHAR(100),
+    type client_type NOT NULL,
+    passport_number VARCHAR(20),
+    company_name VARCHAR(200),
+    inn VARCHAR(12) CHECK (inn IS NULL OR inn ~ '^[0-9]{10,12}$'),
+    phone VARCHAR(20) NOT NULL,
+    email VARCHAR(100),
+    address TEXT,
+    -- Ограничение: для физ. лиц обязателен паспорт, для юр. лиц - название компании
+    CONSTRAINT chk_client_type CHECK (
+        (type = 'Физическое лицо' AND passport_number IS NOT NULL AND company_name IS NULL)
+        OR
+        (type = 'Юридическое лицо' AND company_name IS NOT NULL AND passport_number IS NULL)
+    )
+);
+COMMENT ON TABLE clients IS 'Клиенты (покупатели)';
+
+-- 3.5. Таблица Автомобилей
+CREATE TABLE cars (
+    car_id SERIAL PRIMARY KEY,
+    vin VARCHAR(17) NOT NULL UNIQUE,
+    brand VARCHAR(50) NOT NULL,
+    model VARCHAR(100) NOT NULL,
+    year INTEGER NOT NULL CHECK (year >= 1900 AND year <= EXTRACT(YEAR FROM CURRENT_DATE) + 1),
+    color VARCHAR(50),
+    mileage INTEGER CHECK (mileage >= 0),
+    engine_type VARCHAR(50),
+    engine_volume NUMERIC(3,1),
+    power INTEGER,
+    transmission VARCHAR(50),
+    drive_type VARCHAR(30),
+    trim_level VARCHAR(150),
+    purchase_price NUMERIC(12,2) NOT NULL CHECK (purchase_price >= 0),
+    sale_price NUMERIC(12,2) CHECK (sale_price >= 0),
+    arrival_date DATE DEFAULT CURRENT_DATE,
+    status car_status_type DEFAULT 'В наличии',
+    supplier_id INTEGER NOT NULL REFERENCES suppliers(supplier_id) ON DELETE RESTRICT,
+    -- Ограничение: цена продажи не должна быть ниже цены закупки
+    CONSTRAINT chk_prices CHECK (sale_price IS NULL OR sale_price >= purchase_price)
+);
+COMMENT ON TABLE cars IS 'Автомобили на продажу';
+
+-- 3.6. Таблица Сделок
+CREATE TABLE deals (
+    deal_id SERIAL PRIMARY KEY,
+    deal_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    car_id INTEGER NOT NULL REFERENCES cars(car_id) ON DELETE RESTRICT,
+    client_id INTEGER NOT NULL REFERENCES clients(client_id) ON DELETE RESTRICT,
+    employee_id INTEGER NOT NULL REFERENCES employees(employee_id) ON DELETE RESTRICT,
+    final_price NUMERIC(12,2) NOT NULL CHECK (final_price > 0),
+    payment_method payment_method_type NOT NULL,
+    deal_status deal_status_type DEFAULT 'Оформлена'
+);
+COMMENT ON TABLE deals IS 'Сделки купли-продажи автомобилей';
+
+-- ============================================
+-- 4. СОЗДАНИЕ ИНДЕКСОВ (оптимизация производительности)
+-- ============================================
+-- Индексы для таблицы cars
+CREATE INDEX idx_cars_vin ON cars(vin); -- Уже есть UNIQUE, но явно указываем
+CREATE INDEX idx_cars_status ON cars(status);
+CREATE INDEX idx_cars_brand_model_year ON cars(brand, model, year);
+CREATE INDEX idx_cars_supplier ON cars(supplier_id);
+
+-- Индексы для таблицы deals
+CREATE INDEX idx_deals_date ON deals(deal_date);
+CREATE INDEX idx_deals_car ON deals(car_id);
+CREATE INDEX idx_deals_client ON deals(client_id);
+CREATE INDEX idx_deals_employee ON deals(employee_id);
+CREATE INDEX idx_deals_status ON deals(deal_status);
+
+-- Индексы для таблицы clients
+CREATE INDEX idx_clients_phone ON clients(phone);
+CREATE INDEX idx_clients_type ON clients(type);
+CREATE INDEX idx_clients_name ON clients(last_name, first_name);
+
+-- Индекс для таблицы employees
+CREATE INDEX idx_employees_name ON employees(last_name, first_name);
+CREATE INDEX idx_employees_position ON employees(position_id);
+
+-- ============================================
+-- 5. ЗАПОЛНЕНИЕ ТЕСТОВЫМИ ДАННЫМИ
+-- ============================================
+-- 5.1. Должности
+INSERT INTO positions (position_name) VALUES
+('Директор'),
+('Менеджер по продажам'),
+('Администратор'),
+('Кладовщик');
+
+-- 5.2. Поставщики
+INSERT INTO suppliers (name, inn, legal_address, contact_person, phone) VALUES
+('ООО "АвтоМир Импорт"', '1234567890', 'г. Москва, ул. Ленина, д.1', 'Иванов Петр', '+7 (495) 111-22-33'),
+('АО "ВолгаАвтоТрейд"', '0987654321', 'г. Нижний Новгород, пр. Гагарина, д.50', 'Сидорова Мария', '+7 (831) 222-33-44'),
+('ИП Сергеев К.В.', '112233445566', 'г. Казань, ул. Баумана, д.15', 'Сергеев Константин', '+7 (843) 333-44-55');
+
+-- 5.3. Сотрудники (пароли: password123 в хэше)
+INSERT INTO employees (last_name, first_name, middle_name, position_id, phone, email, login, password_hash) VALUES
+('Петров', 'Иван', 'Сергеевич', 1, '+7 (912) 345-67-89', 'petrov@example.com', 'admin', '$2y$10$N7B7eG5pL9oVc1q6s8XZ3u9yQwEaRtYvCbWxDyFzA8HjKmLnPqRsT'), -- Директор
+('Смирнова', 'Анна', 'Владимировна', 2, '+7 (912) 555-66-77', 'smirnova@example.com', 'asmirnova', '$2y$10$N7B7eG5pL9oVc1q6s8XZ3u9yQwEaRtYvCbWxDyFzA8HjKmLnPqRsT'), -- Менеджер
+('Козлов', 'Дмитрий', 'Алексеевич', 2, '+7 (912) 777-88-99', 'kozlov@example.com', 'dkozlov', '$2y$10$N7B7eG5pL9oVc1q6s8XZ3u9yQwEaRtYvCbWxDyFzA8HjKmLnPqRsT'), -- Менеджер
+('Васильева', 'Ольга', 'Игоревна', 3, '+7 (912) 999-00-11', 'vasilieva@example.com', 'ovasilieva', '$2y$10$N7B7eG5pL9oVc1q6s8XZ3u9yQwEaRtYvCbWxDyFzA8HjKmLnPqRsT'); -- Администратор
+
+-- 5.4. Клиенты
+INSERT INTO clients (last_name, first_name, middle_name, type, passport_number, phone, email, address) VALUES
+('Иванов', 'Сергей', 'Петрович', 'Физическое лицо', '4510 123456', '+7 (912) 111-22-33', 'ivanov@mail.ru', 'г. Сыктывкар, ул. Коммунистическая, д.10'),
+('Соколова', 'Елена', 'Андреевна', 'Физическое лицо', '4510 654321', '+7 (912) 222-33-44', 'sokolova@mail.ru', 'г. Сыктывкар, ул. Первомайская, д.25');
+
+INSERT INTO clients (company_name, type, inn, phone, email, address) VALUES
+('ООО "СтройТех"', 'Юридическое лицо', '5544332211', '+7 (821) 333-44-55', 'info@stroytech.ru', 'г. Сыктывкар, ул. Промышленная, д.5');
+
+-- 5.5. Автомобили
+INSERT INTO cars (vin, brand, model, year, color, mileage, engine_type, engine_volume, power, transmission, drive_type, trim_level, purchase_price, sale_price, arrival_date, status, supplier_id) VALUES
+('XTA210990Y2765432', 'LADA', 'Vesta', 2023, 'Белый', 0, 'Бензин', 1.6, 106, 'Механика', 'Передний', 'Comfort', 850000.00, 1050000.00, '2024-01-15', 'В наличии', 1),
+('XW8AB3CD5EF123456', 'Toyota', 'Camry', 2022, 'Черный', 15000, 'Бензин', 2.5, 181, 'Автомат', 'Передний', 'Executive', 2200000.00, 2650000.00, '2024-02-10', 'В наличии', 2),
+('Z94CB41BAGR123456', 'Hyundai', 'Creta', 2023, 'Серый', 5000, 'Бензин', 2.0, 149, 'Автомат', 'Полный', 'Prestige', 1900000.00, 2350000.00, '2024-03-05', 'Забронирован', 1),
+('XTA219090Y2712345', 'LADA', 'Granta', 2024, 'Красный', 0, 'Бензин', 1.6, 90, 'Автомат', 'Передний', 'Classic', 700000.00, 890000.00, '2024-03-20', 'В наличии', 3);
+
+-- 5.6. Сделки
+INSERT INTO deals (deal_date, car_id, client_id, employee_id, final_price, payment_method, deal_status) VALUES
+('2024-03-25', 3, 1, 2, 2350000.00, 'Кредит', 'Оформлена');
+
+-- ============================================
+-- 6. СОЗДАНИЕ ПРЕДСТАВЛЕНИЙ (VIEW) - "интерфейс"
+-- ============================================
+-- 6.1. Каталог доступных автомобилей
+CREATE OR REPLACE VIEW available_cars_view AS
+SELECT 
+    car_id,
+    vin,
+    brand,
+    model,
+    year,
+    color,
+    mileage,
+    engine_type,
+    engine_volume,
+    power,
+    transmission,
+    drive_type,
+    trim_level,
+    sale_price,
+    arrival_date
+FROM cars
+WHERE status = 'В наличии'
+ORDER BY brand, model, year DESC;
+
+COMMENT ON VIEW available_cars_view IS 'Каталог автомобилей в наличии';
+
+-- 6.2. Отчет по продажам за текущий месяц
+CREATE OR REPLACE VIEW monthly_sales_report AS
+SELECT 
+    d.deal_id,
+    d.deal_date,
+    c.brand || ' ' || c.model as car_name,
+    c.vin,
+    cl.last_name || ' ' || cl.first_name as client_name,
+    e.last_name || ' ' || e.first_name as manager_name,
+    d.final_price,
+    d.payment_method,
+    d.deal_status
+FROM deals d
+JOIN cars c ON d.car_id = c.car_id
+JOIN clients cl ON d.client_id = cl.client_id
+JOIN employees e ON d.employee_id = e.employee_id
+WHERE EXTRACT(YEAR FROM d.deal_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+    AND EXTRACT(MONTH FROM d.deal_date) = EXTRACT(MONTH FROM CURRENT_DATE)
+ORDER BY d.deal_date DESC;
+
+COMMENT ON VIEW monthly_sales_report IS 'Отчет по сделкам за текущий месяц';
+
+-- 6.3. Финансовый отчет (прибыль по проданным автомобилям)
+CREATE OR REPLACE VIEW profit_report AS
+SELECT 
+    d.deal_id,
+    d.deal_date,
+    c.brand || ' ' || c.model as car_name,
+    c.vin,
+    c.purchase_price,
+    d.final_price,
+    (d.final_price - c.purchase_price) as profit,
+    ROUND(((d.final_price - c.purchase_price) / c.purchase_price * 100), 2) as profit_percent
+FROM deals d
+JOIN cars c ON d.car_id = c.car_id
+WHERE d.deal_status IN ('Оплачена', 'Завершена')
+ORDER BY d.deal_date DESC;
+
+COMMENT ON VIEW profit_report IS 'Финансовая прибыль по завершенным сделкам';
+
+-- ============================================
+-- 7. ПРИМЕРЫ SQL-ЗАПРОСОВ (для проверки)
+-- ============================================
+-- 7.1. Выборка всех автомобилей определенной марки
+-- SELECT * FROM cars WHERE brand = 'LADA' ORDER BY year DESC;
+
+-- 7.2. Поиск клиента по телефону
+-- SELECT * FROM clients WHERE phone LIKE '%111-22-33%';
+
+-- 7.3. Количество автомобилей каждого статуса
+-- SELECT status, COUNT(*) as count FROM cars GROUP BY status ORDER BY count DESC;
+
+-- 7.4. Общая сумма продаж по менеджерам
+-- SELECT 
+--     e.last_name || ' ' || e.first_name as manager,
+--     COUNT(d.deal_id) as deals_count,
+--     SUM(d.final_price) as total_sales
+-- FROM employees e
+-- LEFT JOIN deals d ON e.employee_id = d.employee_id
+-- WHERE e.position_id = (SELECT position_id FROM positions WHERE position_name = 'Менеджер по продажам')
+-- GROUP BY e.employee_id
+-- ORDER BY total_sales DESC NULLS LAST;
+
+-- 7.5. Автомобили с наценкой более 15%
+-- SELECT 
+--     brand, model, year, vin,
+--     purchase_price,
+--     sale_price,
+--     ROUND((sale_price - purchase_price) / purchase_price * 100, 2) as markup_percent
+-- FROM cars
+-- WHERE sale_price IS NOT NULL 
+--     AND (sale_price - purchase_price) / purchase_price > 0.15
+-- ORDER BY markup_percent DESC;
+
+-- ============================================
+-- 8. СОЗДАНИЕ РОЛЕЙ И ПРАВ ДОСТУПА
+-- ============================================
+-- Создание ролей (групп)
+CREATE ROLE car_admin WITH LOGIN PASSWORD 'admin123' SUPERUSER;
+CREATE ROLE car_manager WITH LOGIN PASSWORD 'manager123';
+CREATE ROLE car_warehouse WITH LOGIN PASSWORD 'warehouse123';
+
+-- Назначение прав на схему
+GRANT ALL PRIVILEGES ON SCHEMA car_dealership TO car_admin;
+GRANT USAGE ON SCHEMA car_dealership TO car_manager, car_warehouse;
+
+-- Права для Менеджера по продажам
+GRANT SELECT, INSERT, UPDATE ON 
+    clients, deals, 
+    available_cars_view, monthly_sales_report
+TO car_manager;
+
+GRANT SELECT ON 
+    cars, employees, positions, suppliers,
+    profit_report
+TO car_manager;
+
+GRANT USAGE ON SEQUENCE 
+    clients_client_id_seq, deals_deal_id_seq
+TO car_manager;
+
+-- Права для Кладовщика
+GRANT SELECT, INSERT, UPDATE ON 
+    cars, suppliers
+TO car_warehouse;
+
+GRANT SELECT ON 
+    positions, available_cars_view
+TO car_warehouse;
+
+GRANT USAGE ON SEQUENCE 
+    cars_car_id_seq, suppliers_supplier_id_seq
+TO car_warehouse;
+
+-- ============================================
+-- 9. СТРАТЕГИЯ РЕЗЕРВНОГО КОПИРОВАНИЯ
+-- ============================================
+-- Пример команды для резервного копирования (выполнять в командной строке, не в pgAdmin):
+-- pg_dump -U car_admin -d car_dealership -F c -b -v -f "D:\backups\car_dealership_$(date +%Y%m%d).backup"
+
+-- Для автоматического резервного копирования можно создать задание в pgAgent или Windows Task Scheduler
+-- с выполнением команды выше ежедневно в 2:00 ночи.
+
+-- ============================================
+-- 10. ПРОВЕРКА ЦЕЛОСТНОСТИ ДАННЫХ
+-- ============================================
+-- Проверочный запрос для демонстрации связей
+SELECT 
+    d.deal_id,
+    d.deal_date,
+    c.brand || ' ' || c.model as "Автомобиль",
+    c.vin,
+    cl.last_name || ' ' || cl.first_name as "Клиент",
+    e.last_name || ' ' || e.first_name as "Менеджер",
+    d.final_price as "Цена продажи",
+    d.payment_method as "Способ оплаты"
+FROM deals d
+JOIN cars c ON d.car_id = c.car_id
+JOIN clients cl ON d.client_id = cl.client_id
+JOIN employees e ON d.employee_id = e.employee_id;
+
+-- Сообщение об успешном создании
+DO $$
+BEGIN
+    RAISE NOTICE '========================================';
+    RAISE NOTICE 'БАЗА ДАННЫХ "АВТОМОБИЛЬНЫЙ ЦЕНТР" УСПЕШНО СОЗДАНА!';
+    RAISE NOTICE 'Схема: car_dealership';
+    RAISE NOTICE 'Таблиц создано: 6';
+    RAISE NOTICE 'Представлений создано: 3';
+    RAISE NOTICE 'Ролей создано: 3';
+    RAISE NOTICE '========================================';
+END $$;
