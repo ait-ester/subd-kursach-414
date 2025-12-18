@@ -564,35 +564,35 @@ DATE=$(date +%Y%m%d_%H%M%S)
 DB_NAME="sport_school"
 BACKUP_FILE="$BACKUP_ROOT/full_$DATE.sql.gz"
 
-# Экспорт с использованием pg_dump, сжатие gzip на лету
+Экспорт с использованием pg_dump, сжатие gzip на лет
 pg_dump -h localhost -U postgres -d $DB_NAME \
   --format=plain \
   --no-owner \
   --no-privileges \
   --verbose 2>&1 | gzip > $BACKUP_FILE
 
-# Проверка успешности создания
+ Проверка успешности создания
 if [ $? -eq 0 ]; then
   echo "[$DATE] Full backup successful: $BACKUP_FILE" >> $BACKUP_ROOT/backup.log
-  # Отправка в облако (пример для Yandex Cloud)
-  # yc storage cp $BACKUP_FILE s3://my-backup-bucket/postgres/full/
+  Отправка в облако (пример для Yandex Cloud)
+  yc storage cp $BACKUP_FILE s3://my-backup-bucket/postgres/full/
 else
   echo "[$DATE] ERROR: Full backup failed!" >> $BACKUP_ROOT/backup.log
-  # Отправка уведомления администратору
+   Отправка уведомления администратору
   echo "Backup failed for $DB_NAME on $(hostname)" | mail -s "BACKUP FAILURE" admin@mail.ru
 fi
 
-# Удвление старых локальных бэкапов (храним 7 дней)
+ Удвление старых локальных бэкапов (храним 7 дней)
 find $BACKUP_ROOT -name "full_*.sql.gz" -mtime +7 -delete</code></pre>
 
 <h4>5.6.3. Задание в crontab для автоматического выполнения</h4>
 <pre><code class="language-crontab"># Ежедневно в 2:30 ночи
 30 2 * * * /usr/local/bin/backup_full.sh
 
-# Каждый час - синхронизация WAL-архивов с облаком (упрощенный пример)
+ Каждый час - синхронизация WAL-архивов с облаком (упрощенный пример)
 0 * * * * rsync -avz /var/backups/postgresql/wal_archive/ user@backup-server:/backups/wal/
 
-# Еженедельно в воскресенье - проверка целостности последнего бэкапа
+ Еженедельно в воскресенье - проверка целостности последнего бэкапа
 0 5 * * 0 /usr/local/bin/verify_backup.sh</code></pre>
 
 <h3 id="57-разработка-стратегии-защиты-базы-данных-и-хранимой-в-ней-информации">5.7. Разработка стратегии защиты базы данных и хранимой в ней информации</h3>
